@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+.venv/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+# Game material stays outside the repository.
+*.exe
+*.dll
+*.iso
+*.cab
+*.msi
+*.sys
+*.igb
+*.xmlb
+*.engb
+*.zss
+*.zsm
+*.sfd
