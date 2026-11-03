@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "muac-fix"
+version = "0.1.0.dev0"
+description = "Local installation and compatibility tools for Marvel: Ultimate Alliance (2006 PC)"
+requires-python = ">=3.11"
+dependencies = ["pycdlib==1.22.0"]
+license = "GPL-3.0-only"
+
+[project.scripts]
+muac-setup = "muac_setup.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
