@@ -1,0 +1,3 @@
+LIBRARY libIGDisplay
+EXPORTS
+    MuacTest_DynamicWarp

@@ -3,6 +3,8 @@
 #include "xinput_pad.hpp"
 #include "runtime.hpp"
 #include "runtime_rules.hpp"
+#include "controller_identity_rules.hpp"
+#include "controller_setup.hpp"
 
 #define DIRECTINPUT_VERSION 0x0800
 #include <Windows.h>
@@ -150,6 +152,23 @@ namespace gamepad_fix
 			logger::write_once(std::string("spoof:") + where, "dinput: %s reports %04X:%04X -> presenting as wired Xbox 360 pad (045E:028E)",
 			                   where, vid_of(instance->guidProduct), pid_of(instance->guidProduct));
 			instance->guidProduct.Data1 = (static_cast<DWORD>(xbox360_wired_pid) << 16) | microsoft_vid;
+			bool named=false;
+			if(instance->dwSize==sizeof(DIDEVICEINSTANCEA)) {
+				auto& info=*reinterpret_cast<DIDEVICEINSTANCEA*>(instance);
+				wchar_t name[MAX_PATH]{};
+				const auto alias=controller_identity_rules::name(info);
+				wchar_t target[MAX_PATH]{};
+				if(alias && MultiByteToWideChar(CP_ACP,0,info.tszInstanceName,-1,name,MAX_PATH) &&
+				   MultiByteToWideChar(CP_ACP,0,alias->c_str(),-1,target,MAX_PATH) &&
+				   controller_setup::prepare_name(name,target)) named=controller_identity_rules::apply(info);
+			}
+			else if(instance->dwSize==sizeof(DIDEVICEINSTANCEW)) {
+				const auto alias=controller_identity_rules::name(*instance);
+				if(alias && controller_setup::prepare_name(instance->tszInstanceName,*alias)) named=controller_identity_rules::apply(*instance);
+			}
+			if(named) logger::write_once("xbox-name", "dinput: Xbox device name supplied for the game's built-in button glyph selection");
+			else logger::write_once("original-name", "dinput: original device name retained; Xbox glyph selection may remain unavailable");
+			controller_setup::select_if_unconfigured(instance->guidInstance,instance->guidProduct);
 		}
 
 		void* original(void* self, const int slot)

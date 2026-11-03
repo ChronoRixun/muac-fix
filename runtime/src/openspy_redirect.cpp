@@ -1,5 +1,4 @@
 #include "openspy_redirect.hpp"
-#include "iat_hook.hpp"
 #include "local_ip.hpp"
 #include "log.hpp"
 #include <MinHook.h>

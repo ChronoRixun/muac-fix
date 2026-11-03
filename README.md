@@ -61,21 +61,36 @@ Copy the resulting `dinput8.dll` next to Game.exe. Optional `muac-fix.ini`:
 ControllerSupport=1
 CaptureMouse=0
 
+[Display]
+RunInBackground=1
+
 [Online]
 Domain=openspy.net
 LocalIP=auto
 ```
 
-The Bluetooth Xbox controller was detected and presented as a wired Xbox 360
-pad. In-game action mappings are still awaiting a human check. This preview only
+The Bluetooth Xbox controller is presented with a wired Xbox 360 product ID and
+an Xbox-containing name. Both are needed: the 2006 game chooses its button atlas
+from the name, so a PID-only fix still showed numbered buttons. The owner confirmed
+Xbox glyphs and mouse escape in-game. Full gameplay mappings remain unverified.
+This preview only
 normalizes a single connected XInput controller: DirectInput enumeration order
 is not a reliable XInput slot identity, so it refuses ambiguous multipad synthesis
 instead of feeding another controller's input into the wrong player. Existing
 native pad handling remains available when no normalization is applied.
 
-CaptureMouse=0 suppresses the engine's pointer clipping/recentering and uses
+CaptureMouse=0 suppresses pointer clipping/recentering through process-local API
+hooks, including calls resolved dynamically by the protected executable, and uses
 nonexclusive mouse input. Keep dgVoodoo's CaptureMouse setting off as well.
-Changes to input/online options take effect after restarting the game.
+RunInBackground=1 filters deactivation in windowed/borderless mode. Automatic
+minimization is suppressed there, while the user's minimize command is respected.
+Changes take effect after restarting the game.
+
+Existing controller profiles are retained. A new Xbox alias is tied to the
+original name, and a saved profile is copied only into an absent, associated
+destination. An unrelated existing alias is refused. On the checked retail build,
+an absent player-one selection is initialized for the pad; a saved selection or
+custom-binding choice is never overwritten.
 
 Online Domain=off disables the redirect. An optional Server=IPv4 overrides Domain
 for a local/private service; LocalIP=auto prefers the default-route adapter over

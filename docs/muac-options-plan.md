@@ -44,3 +44,13 @@ Work stays on codex/retail-setup and launcher codex/muac-setup (beta 3 base).
 - Launcher panel and native backend implemented; all CEF integration checks pass.
   133 existing launcher native tests, two UI save-recovery regressions and the
   new runtime tests pass. No multiplayer certification was requested.
+- Follow-up: owner found the first IAT-only cursor guard incomplete. A dynamic
+  GetProcAddress fixture reproduced the failure; process-local API hooks now
+  catch it, and the owner confirmed free mouse movement.
+- REA analysis found name-based Xbox glyph selection. Consistent Xbox ID/name
+  presentation selects the game's own atlas; owner confirmed Xbox glyphs.
+- Runtime 0.1.1 adds windowed focus policy and RunInBackground. Hidden-window
+  tests cover both background choices, subclass chaining and explicit minimize.
+- Per-original-name aliases carry an association marker; synthetic registry tests
+  cover custom bindings, unrelated destinations, fresh/repeated setup and leaving
+  existing player selection untouched. No game assets or analysis dumps are shipped.
