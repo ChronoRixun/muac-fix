@@ -1,0 +1,20 @@
+{
+  "safedisc": {
+    "repository": "https://github.com/nckstwrt/SafeDiscLoader2",
+    "commit": "91b6b89da8296276c36ff1a8fea2456c892ca865"
+  },
+  "pycdlib_source": {
+    "filename": "pycdlib-1.22.0.tar.gz",
+    "url": "https://files.pythonhosted.org/packages/c3/4a/894c8cb0fbc8a7f3846a3ff1d24cd05d6acca962b9610d61a65c74398aea/pycdlib-1.22.0.tar.gz",
+    "sha256": "00456c146e2834eac96ddf738b6b2cbe81564d9efe2022ae6a155fc6649870c6"
+  },
+  "dgvoodoo": {
+    "version": "2.87.6",
+    "url": "https://github.com/dege-diosg/dgVoodoo2/releases/download/2.87.6/dgVoodoo2_87_6.zip",
+    "size": 9244362,
+    "sha256": "9afa493396feec7108f42a2d97661eef96bbaac5addf0dfb5cfbc3001cd76a0a",
+    "member": "MS/x86/D3D9.dll",
+    "dll_size": 482816,
+    "dll_sha256": "060cb161eb7a0c608a520185f0b334db325ad71d69016bc26060c9d5b9651f7d"
+  }
+}

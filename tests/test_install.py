@@ -13,6 +13,37 @@ from muac_setup.sources import open_source
 
 
 class InstallTests(unittest.TestCase):
+    def test_failed_preparation_never_promotes_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / 'disc'
+            source.mkdir()
+            (source / 'payload.bin').write_bytes(b'fixture')
+            files = [GameFile('payload.bin', 'fixture.bin', 7, '', 'payload.bin')]
+            info = {'kind': 'disc', 'bytes': 7, 'runtime': {'known_retail': True}}
+            def fail(_):
+                raise SetupError('E_TEST', 'Synthetic runtime failure')
+            with patch('muac_setup.install.inspect_source', return_value=(info, files)):
+                with self.assertRaises(SetupError):
+                    import_disc(source, root / 'game', prepare=fail)
+            self.assertFalse((root / 'game').exists())
+            self.assertEqual(len(list(root.glob('.muac-stage-*'))), 1)
+
+    def test_cancel_before_promotion_keeps_destination_unregistered(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / 'disc'
+            source.mkdir()
+            (source / 'payload.bin').write_bytes(b'fixture')
+            files = [GameFile('payload.bin', 'fixture.bin', 7, '', 'payload.bin')]
+            info = {'kind': 'disc', 'bytes': 7, 'runtime': {'known_retail': True}}
+            stop = []
+            with patch('muac_setup.install.inspect_source', return_value=(info, files)):
+                with self.assertRaises(SetupError) as error:
+                    import_disc(source, root / 'game', prepare=lambda _: stop.append(True), cancelled=lambda: bool(stop))
+            self.assertEqual(error.exception.code, 'E_CANCELLED')
+            self.assertFalse((root / 'game').exists())
+
     def test_verify_detects_same_size_changes_and_missing_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

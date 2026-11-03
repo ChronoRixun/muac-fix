@@ -23,7 +23,7 @@ class CabinetInfo(C.Structure):
                 ('set_id', W.USHORT), ('number', W.USHORT)]
 
 
-def extract_cabinet(cabinet, files, output, resolve_next=None):
+def extract_cabinet(cabinet, files, output, resolve_next=None, cancelled=lambda: False):
     output = Path(output).absolute()
     assert_no_links(output)
     wanted = {f.key.casefold(): f for f in files}
@@ -36,6 +36,8 @@ def extract_cabinet(cabinet, files, output, resolve_next=None):
     @callback_type
     def callback(_, notification, param1, param2):
         try:
+            if cancelled():
+                raise SetupError('E_CANCELLED', 'Setup cancelled during extraction.')
             if notification == 0x11:  # SPFILENOTIFY_FILEINCABINET
                 entry = C.cast(param1, C.POINTER(FileInCabinet)).contents
                 key = entry.name.casefold()
