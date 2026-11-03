@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.21)
+project(muac_runtime VERSION 0.1.0 LANGUAGES C CXX RC)
+if(NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
+  message(FATAL_ERROR "Build with MSVC for Win32: MUA 2006 is 32-bit.")
+endif()
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
+add_compile_options(/W4 /permissive- /utf-8)
+add_library(muac_runtime SHARED src/exports.cpp src/gamepad_fix.cpp src/xinput_pad.cpp
+  src/log.cpp src/iat_hook.cpp src/runtime.cpp src/openspy_redirect.cpp src/local_ip.cpp
+  src/dinput8.def src/version.rc
+  third_party/minhook/src/buffer.c third_party/minhook/src/hook.c
+  third_party/minhook/src/trampoline.c third_party/minhook/src/hde/hde32.c)
+target_include_directories(muac_runtime PRIVATE third_party/minhook/include)
+target_link_libraries(muac_runtime PRIVATE dxguid ws2_32 iphlpapi)
+set_target_properties(muac_runtime PROPERTIES OUTPUT_NAME dinput8 ARCHIVE_OUTPUT_NAME muac_runtime)
+add_executable(muac_runtime_test test/runtime_test.cpp)
+target_include_directories(muac_runtime_test PRIVATE src)
+target_link_libraries(muac_runtime_test PRIVATE dinput8.lib dxguid)
+add_dependencies(muac_runtime_test muac_runtime)
+enable_testing()
+add_test(NAME runtime COMMAND muac_runtime_test)

@@ -3,6 +3,13 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  native:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S runtime -B build/runtime -A Win32
+      - run: cmake --build build/runtime --config Release --parallel
+      - run: ctest --test-dir build/runtime -C Release --output-on-failure
   tests:
     runs-on: windows-latest
     strategy:
