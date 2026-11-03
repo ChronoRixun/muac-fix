@@ -48,3 +48,24 @@ The full SafeDiscLoader2 source, our source, exact pycdlib LGPL source archive a
 instructions are included with the package. End users can rebuild with a modified pycdlib;
 there is no required signing key. Versioned source and build configuration remain available
 alongside binary delivery. Keep all upstream license notices when redistributing.
+
+## Managed staging and Wine paths
+
+Managed `setup` creates its `.muac-stage-*` as a direct child of the chosen output
+folder and reports it in the `extract` stage event. A `cleanup` stage event is
+flushed before handled failure/cancellation deletion starts. The launcher can
+finish deleting that exact contained stage after forcibly ending an unresponsive
+helper. Plain `import` retains its sibling diagnostic-stage behavior.
+
+After verification and runtime preparation, managed setup refuses unrelated files
+added to the output container. It briefly detaches the verified stage beside the
+output using a same-volume rename, removes the now-empty container, then renames
+the stage into the final output. There is no cancellation point in this short
+promotion sequence. Abrupt termination during these renames can still require
+manual recovery of a sibling stage; the launcher never deletes sibling paths.
+
+Wine is detected by `ntdll!wine_get_version`. A reparse-point exception applies
+only to an absolute DOS drive root (such as `Z:\`), allowing Wine's host-drive
+mapping. Source/output ancestors below the root, source-tree entries, and ISO
+paths still reject links and junctions. No launcher path-validation relaxation is
+needed for starting setup; its forced-kill cleanup uses the same root exception.

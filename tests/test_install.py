@@ -13,6 +13,65 @@ from muac_setup.sources import open_source
 
 
 class InstallTests(unittest.TestCase):
+    def test_managed_stage_is_reported_inside_output_and_cleanup_is_announced(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / 'disc'
+            source.mkdir()
+            (source / 'payload.bin').write_bytes(b'fixture')
+            output = root / 'game'
+            files = [GameFile('payload.bin', 'fixture.bin', 7, '', 'payload.bin')]
+            info = {'kind': 'disc', 'bytes': 7, 'runtime': {'known_retail': True}}
+            events = []
+            def prepare(stage):
+                self.assertEqual(stage.parent, output)
+                self.assertTrue(stage.name.startswith('.muac-stage-'))
+                # An unrelated file added while setup runs must survive failure.
+                (output / 'keep.txt').write_text('keep')
+                raise SetupError('E_TEST', 'Synthetic preparation failure')
+            with patch('muac_setup.install.inspect_source', return_value=(info, files)):
+                with self.assertRaises(SetupError):
+                    import_disc(source, output, lambda e, d: events.append((e, d)), prepare=prepare)
+            self.assertEqual((output / 'keep.txt').read_text(), 'keep')
+            self.assertEqual(list(output.glob('.muac-stage-*')), [])
+            first = events[0][1]['staging']
+            self.assertEqual(Path(first).parent, output)
+            self.assertIn(('stage', {'id': 'cleanup', 'state': 'running', 'staging': first}), events)
+            self.assertTrue(events[-1][1]['cleaned'])
+
+    def test_managed_verified_stage_promotes_with_no_nested_stage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / 'disc'
+            source.mkdir()
+            (source / 'payload.bin').write_bytes(b'fixture')
+            output = root / 'game'
+            output.mkdir()
+            files = [GameFile('payload.bin', 'data/fixture.bin', 7, '', 'payload.bin')]
+            info = {'kind': 'disc', 'bytes': 7, 'runtime': {'known_retail': True}}
+            with patch('muac_setup.install.inspect_source', return_value=(info, files)):
+                result = import_disc(source, output, prepare=lambda stage: (stage / 'runtime.txt').write_text('fixture'))
+            self.assertTrue(result['prepared'])
+            self.assertTrue(verify(output)['files_complete'])
+            self.assertEqual((output / 'runtime.txt').read_text(), 'fixture')
+            self.assertFalse(list(root.rglob('.muac-stage-*')))
+
+    def test_managed_promotion_refuses_concurrent_output_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / 'disc'
+            source.mkdir()
+            (source / 'payload.bin').write_bytes(b'fixture')
+            output = root / 'game'
+            files = [GameFile('payload.bin', 'fixture.bin', 7, '', 'payload.bin')]
+            info = {'kind': 'disc', 'bytes': 7, 'runtime': {'known_retail': True}}
+            with patch('muac_setup.install.inspect_source', return_value=(info, files)):
+                with self.assertRaises(SetupError):
+                    import_disc(source, output, prepare=lambda _: (output / 'keep.txt').write_text('keep'))
+            self.assertEqual((output / 'keep.txt').read_text(), 'keep')
+            self.assertFalse((output / 'fixture.bin').exists())
+            self.assertFalse(list(output.glob('.muac-stage-*')))
+
     def test_plain_import_retains_stage_and_managed_cleanup_preserves_siblings(self):
         for managed in (False, True):
             with self.subTest(managed=managed), tempfile.TemporaryDirectory() as tmp:
