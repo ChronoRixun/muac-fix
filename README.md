@@ -11,7 +11,10 @@ the original installer. Existing game folders are detected separately.
 This repository contains our tools and tests, never game files or replacement
 game executables. The protected retail executable was started with a source-built
 SafeDiscLoader2 version.dll; windowed rendering was checked with dgVoodoo 2.87.6.
-Those dependencies are not downloaded or installed by the importer yet.
+The managed `setup` command installs the packaged runtimes after importing and checking the
+player's disc. The launcher downloads the checked helper and original graphics archive;
+the helper itself remains offline. See [packaging](docs/packaging.md) for artifact contents,
+corresponding source and the release workflow.
 
 Development requires Windows and Python 3.11+. Install with `pip install -e .`.
 Run tests with `python -m unittest discover -s tests -v`.

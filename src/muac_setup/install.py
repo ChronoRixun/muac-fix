@@ -88,13 +88,19 @@ def check_destination(source, destination):
         raise SetupError('E_DESTINATION', 'Choose a new or empty output directory.')
 
 
-def import_disc(source_path, destination, emit=lambda *_: None):
+def import_disc(source_path, destination, emit=lambda *_: None, prepare=None, cancelled=lambda: False):
+    def check_cancel():
+        if cancelled():
+            raise SetupError('E_CANCELLED', 'Setup cancelled. No installation was registered.')
+    check_cancel()
     destination = Path(destination).absolute()
     check_destination(source_path, destination)
     with open_source(source_path) as source:
         info, files = inspect_source(source)
         if info['kind'] != 'disc':
             raise SetupError('E_INSTALLED', 'This is already installed. Use info to inspect it; no disc extraction is needed.')
+        if prepare and not info['runtime'].get('known_retail'):
+            raise SetupError('E_RUNTIME_EXE', 'Automatic setup supports only the verified original MUA 2006 retail executable.')
         destination.parent.mkdir(parents=True, exist_ok=True)
         cabinet_names = {f.cabinet.casefold(): f.cabinet for f in files if f.cabinet}
         extra = sum(source.entry(name)[1] for name in cabinet_names.values()) if source.kind == 'iso' else 0
@@ -110,6 +116,7 @@ def import_disc(source_path, destination, emit=lambda *_: None):
                 groups[file.cabinet].append(file)
             done = 0
             for cabinet, members in groups.items():
+                check_cancel()
                 if cabinet:
                     with tempfile.TemporaryDirectory(prefix='muac-cab-', dir=destination.parent) as tmp:
                         def resolve_volume(name):
@@ -122,15 +129,17 @@ def import_disc(source_path, destination, emit=lambda *_: None):
                             if not cached.exists():
                                 source.copy(actual, cached)
                             return cached
-                        extract_cabinet(resolve_volume(cabinet), members, stage, resolve_next=resolve_volume)
+                        extract_cabinet(resolve_volume(cabinet), members, stage, resolve_next=resolve_volume, cancelled=cancelled)
                 else:
                     for file in members:
+                        check_cancel()
                         source.copy(file.source, stage / file.path)
                 done += len(members)
                 emit('progress', {'stage': 'extract', 'done': done, 'total': len(files), 'cabinet': cabinet})
             emit('stage', {'id': 'verify', 'state': 'running'})
             manifest = []
             for index, file in enumerate(files):
+                check_cancel()
                 path = stage / file.path
                 if path.stat().st_size != file.size:
                     raise SetupError('E_VERIFY', f'File size differs from MSI: {file.path}')
@@ -141,6 +150,11 @@ def import_disc(source_path, destination, emit=lambda *_: None):
                      'source': info, 'files': manifest}
             (stage / '_muac').mkdir()
             (stage / STAMP).write_text(json.dumps(stamp, indent=2) + '\n', encoding='utf-8')
+            if prepare:
+                check_cancel()
+                emit('stage', {'id': 'runtime', 'state': 'running'})
+                prepare(stage)
+            check_cancel()
             check_destination(source_path, destination)
             if destination.exists():
                 destination.rmdir()  # only the checked empty directory
@@ -149,7 +163,7 @@ def import_disc(source_path, destination, emit=lambda *_: None):
             emit('incomplete', {'staging': str(stage), 'message': 'Import did not finish. No ready installation was registered.'})
             raise
         return {'install': str(destination), 'file_count': len(files), 'bytes': info['bytes'],
-                'files_complete': True, 'runtime': info['runtime'], 'playable': False}
+                'files_complete': True, 'runtime': info['runtime'], 'prepared': prepare is not None, 'playable': False}
 
 
 def verify(folder):

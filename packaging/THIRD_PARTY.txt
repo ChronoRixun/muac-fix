@@ -1,0 +1,19 @@
+MUA Classic Fix setup package
+
+MUA Classic Fix: GPL-3.0-only
+https://github.com/ChronoRixun/muac-fix
+Includes MIT-licensed input/online code and BSD-licensed MinHook; see source licenses/.
+
+SafeDiscLoader2: GPL-3.0
+https://github.com/nckstwrt/SafeDiscLoader2
+Pinned source revision: 91b6b89da8296276c36ff1a8fea2456c892ca865
+The binary is built from this source revision. The full source and license are
+included in the setup package's sources and licenses folders.
+
+dgVoodoo 2.87.6 by Dege is downloaded separately as the original upstream archive
+for the selected MUA 2006 installation. It is not included in this setup package.
+https://github.com/dege-diosg/dgVoodoo2/releases/tag/2.87.6
+Redistribution terms: https://dege.freeweb.hu/dgVoodoo2/ReadmeGeneral/
+
+Python, PyInstaller and pycdlib notices are included under licenses/.
+This package contains no game executable, game assets or protection driver.
