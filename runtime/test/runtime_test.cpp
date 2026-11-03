@@ -12,6 +12,7 @@
 #include "controller_identity_rules.hpp"
 #include "window_focus_rules.hpp"
 #include "online_rules.hpp"
+#include "vtable_patch.hpp"
 
 int failures = 0;
 #define CHECK(x) do { if(!(x)) { std::printf("FAIL line %d: %s\n", __LINE__, #x); ++failures; } } while(false)
@@ -20,7 +21,24 @@ BOOL CALLBACK enumerate(const DIDEVICEINSTANCEA* item, void* context) {
     std::printf("Controller: %s, product %08lX\n", item->tszProductName, item->guidProduct.Data1);
     return DIENUM_CONTINUE;
 }
+int protection_calls = 0, fail_protection_call = 0;
+BOOL WINAPI fixture_protect(LPVOID, SIZE_T, DWORD, PDWORD old) {
+    *old = PAGE_READONLY;
+    return ++protection_calls != fail_protection_call;
+}
 int main() {
+    int first{}, second{};
+    void* slot = &first;
+    void* saved = nullptr;
+    fail_protection_call = 1;
+    CHECK(vtable_patch::install(&slot, &second, saved, fixture_protect) == vtable_patch::result::write_denied);
+    CHECK(slot == &first && saved == nullptr && protection_calls == 1);
+    protection_calls = 0; fail_protection_call = 2;
+    CHECK(vtable_patch::install(&slot, &second, saved, fixture_protect) == vtable_patch::result::restore_failed);
+    CHECK(slot == &first && saved == &first && protection_calls == 3);
+    protection_calls = 0; fail_protection_call = 0;
+    CHECK(vtable_patch::install(&slot, &second, saved, fixture_protect) == vtable_patch::result::installed);
+    CHECK(slot == &second && saved == &first && protection_calls == 2);
     DIDEVICEINSTANCEA ansi{};ansi.dwSize=sizeof(ansi);ansi.guidInstance.Data1=0x12345678;
     strcpy_s(ansi.tszInstanceName,"Bluetooth LE XINPUT compatible input device");
     controller_identity_rules::apply(ansi);

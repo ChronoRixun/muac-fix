@@ -43,6 +43,19 @@ class SourceTests(unittest.TestCase):
                 open_source(image)
             self.assertEqual(error.exception.code, 'E_SOURCE')
 
+    def test_iso9660_extensionless_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            image = Path(tmp) / 'plain.iso'
+            iso = pycdlib.PyCdlib()
+            iso.new()
+            iso.add_fp(io.BytesIO(b'hello'), 5, iso_path='/README.;1')
+            iso.add_fp(io.BytesIO(b'data'), 4, iso_path='/DATA.BIN;1')
+            iso.write(str(image))
+            iso.close()
+            with open_source(image) as src:
+                self.assertEqual(src.read('readme'), b'hello')
+                self.assertEqual(src.read('data.bin'), b'data')
+
 
 if __name__ == '__main__':
     unittest.main()

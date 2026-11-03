@@ -5,6 +5,7 @@
 #include "runtime_rules.hpp"
 #include "controller_identity_rules.hpp"
 #include "controller_setup.hpp"
+#include "vtable_patch.hpp"
 
 #define DIRECTINPUT_VERSION 0x0800
 #include <Windows.h>
@@ -174,7 +175,14 @@ namespace gamepad_fix
 		void* original(void* self, const int slot)
 		{
 			std::lock_guard lock(mutex);
-			return originals[*static_cast<void***>(self)][slot];
+			auto** table = *static_cast<void***>(self);
+			const auto found = originals.find(table);
+			if (found != originals.end()) {
+				const auto saved = found->second.find(slot);
+				if (saved != found->second.end()) return saved->second;
+			}
+			// A dependent hook can still query an unpatched slot after a denied write.
+			return table[slot];
 		}
 
 		void patch_vtable(void* object, const int slot, void* replacement)
@@ -187,11 +195,11 @@ namespace gamepad_fix
 				return;
 			}
 
-			DWORD old_protect = 0;
-			VirtualProtect(&vtable[slot], sizeof(void*), PAGE_READWRITE, &old_protect);
-			saved[slot] = vtable[slot];
-			vtable[slot] = replacement;
-			VirtualProtect(&vtable[slot], sizeof(void*), old_protect, &old_protect);
+			const auto result = vtable_patch::install(&vtable[slot], replacement, saved[slot]);
+			if (result != vtable_patch::result::installed) {
+				saved.erase(slot);
+				logger::write("dinput: skipped vtable slot %d after protection failure (%d)", slot, static_cast<int>(result));
+			}
 		}
 
 		HRESULT STDMETHODCALLTYPE get_device_info(void* self, LPDIDEVICEINSTANCEW instance)

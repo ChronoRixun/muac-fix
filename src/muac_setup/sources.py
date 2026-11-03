@@ -111,7 +111,9 @@ class IsoSource(Source):
                     actual = root.rstrip('/') + '/' + name
                     relative = actual.lstrip('/')
                     if self.namespace == 'iso_path':
-                        relative = relative.rsplit(';', 1)[0]
+                        # ISO9660 uses a terminal dot for extensionless files.
+                        # Keep the original locator for pycdlib reads.
+                        relative = relative.rsplit(';', 1)[0].removesuffix('.')
                     record = self.iso.get_record(**{self.namespace: actual})
                     self.add(relative, actual, record.data_length)
         except Exception as exc:
