@@ -1,7 +1,8 @@
 # Retail import proof — 2026-11-02
 
-Status: file import proven on Windows 11; playable setup remains blocked at the
-protected executable's disc check. This is not a released compatibility fix.
+Status: file import proven on Windows 11; a source-built SafeDiscLoader2 now
+gets the unchanged retail executable into its rendered startup sequence.
+Gameplay and saving remain unverified. This is not a released compatibility fix.
 
 ## Source and import
 
@@ -53,7 +54,26 @@ or represented as a working MUA solution.
 
 ## Next gate
 
-Prove one runtime path: either a compatible executable supplied locally by the
-player, or additional compatibility work supporting the protected executable.
-Then test graphics initialization, gameplay, saving/loading and controller input.
-Only after this should launcher setup mark an imported installation playable.
+### SafeDiscLoader2 follow-up
+
+[SafeDiscLoader2](https://github.com/nckstwrt/SafeDiscLoader2), source commit
+`91b6b89da8296276c36ff1a8fea2456c892ca865`, compiled locally as a Win32 Release
+version.dll, detected SafeDisc 4.60.00 and reached the rendered MUA startup.
+Game.exe retains its original SHA-256. No replacement executable was obtained.
+
+The first native fullscreen run appeared frozen at low resolution to the user.
+It was terminated, then an older local x86 dgVoodoo D3D9 wrapper reached the
+main menu. Its general windowed setting was overridden by DirectX's default
+AppControlledScreenMode=true, so that run was still fullscreen. It crashed in
+the wrapper during display mode changes; do not use this as a working profile.
+
+The official dgVoodoo 2.87.6 release was downloaded with its GitHub asset SHA-256
+verified. With BOTH FullScreenMode=false and AppControlledScreenMode=false,
+the game opens in a decorated 1920x1080 window. The user's saved 2560x1440 desktop
+mode remains unchanged. The process responds and startup movies advance.
+See windowed-display.md for the exact configuration and validation limits.
+
+Next: confirm window behavior, graphics initialization, gameplay, saving/loading,
+disc-independent startup and controller input. Package and license the runtime
+dependencies explicitly before launcher integration. The helper still correctly
+reports runtime_verified=false; it does not yet install either runtime DLL.

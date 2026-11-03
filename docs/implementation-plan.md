@@ -32,6 +32,8 @@ Verification: unit tests using synthetic MSI/CAB/ISO fixtures; real import using
 the supplied disc outside the repository; complete file hash verification; manual
 runtime checks. Launcher UI/build validation follows only once runtime is proven.
 
-Current gate: retail ISO plus app-local SafeDiscShim still fails the DVD check.
-See retail-proof.md. A compatible runtime must be demonstrated before launcher
+Current gate: source-built SafeDiscLoader2 starts the unchanged retail executable;
+dgVoodoo 2.87.6 with both screen-mode overrides disabled gives a real 1080p window
+without changing desktop resolution. See retail-proof.md and windowed-display.md.
+Gameplay/save-load validation and runtime packaging are required before launcher
 integration; no Play-ready state or finished runtime fix is being claimed.
