@@ -10,6 +10,31 @@ from muac_setup.sources import open_source
 
 
 class SourceTests(unittest.TestCase):
+    def test_large_folder_and_iso_copy_can_be_cancelled_mid_file(self):
+        for kind in ('folder', 'iso'):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                data = b'x' * (4 * 1024 * 1024)
+                if kind == 'folder':
+                    source = root / 'disc'
+                    source.mkdir()
+                    (source / 'DATA.BIN').write_bytes(data)
+                else:
+                    source = root / 'disc.iso'
+                    iso = pycdlib.PyCdlib()
+                    iso.new()
+                    iso.add_fp(io.BytesIO(data), len(data), iso_path='/DATA.BIN;1')
+                    iso.write(str(source))
+                    iso.close()
+                checks = []
+                def cancelled():
+                    checks.append(True)
+                    return len(checks) > 2
+                with open_source(source) as src, self.assertRaises(SetupError) as error:
+                    src.copy('data.bin', root / 'partial.bin', cancelled=cancelled)
+                self.assertEqual(error.exception.code, 'E_CANCELLED')
+                self.assertLess((root / 'partial.bin').stat().st_size, len(data))
+
     def test_folder_lookup_is_case_insensitive(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

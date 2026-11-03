@@ -9,7 +9,9 @@ from .layout import SetupError, safe_relative
 from .sources import assert_no_links
 
 REQUIRED = {'dinput8.dll', 'version.dll', 'version.json', 'muac-fix.ini', 'dgVoodoo.conf'}
-OPTIONAL = {'_muac/THIRD_PARTY.txt', '_muac/licenses/SafeDiscLoader2.txt', '_muac/licenses/muac-fix.txt'}
+OPTIONAL = {'_muac/THIRD_PARTY.txt', '_muac/licenses/SafeDiscLoader2.txt', '_muac/licenses/muac-fix.txt'} | {
+    '_muac/licenses/' + name for name in ('minhook-BSD.txt', 'mua-controller-fix-MIT.txt',
+        'xml2-fix-MIT.txt', 'SafeDiscLoader2-Minhook.txt', 'tiny-json-MIT.txt')}
 
 
 def checked_file(path, size, checksum):

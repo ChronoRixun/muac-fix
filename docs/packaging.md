@@ -12,7 +12,8 @@ Upstream terms: https://dege.freeweb.hu/dgVoodoo2/ReadmeGeneral/
 
 Build on Windows with Python 3.14 and Visual Studio C++ tools:
 
-1. Install `packaging/requirements.txt` in an isolated Python environment.
+1. Install dependencies in an isolated Python environment with
+   `pip install --require-hashes --only-binary=:all: -r packaging/requirements.lock`.
 2. Build/test `runtime/` for Win32 Release.
 3. Check out the SafeDiscLoader2 source revision in `packaging/dependencies.json`.
 4. Build its `version-proxy.vcxproj` with Release/Win32 and
@@ -25,6 +26,17 @@ The manual **Package setup preview** workflow performs these steps and uploads a
 It does not publish or tag. Review the artifact before releasing it, including its manifest,
 source archives, licenses, PE architecture and absence of game content. The launcher requires
 a published manifest asset on the selected update channel to perform automatic downloads.
+The manifest requires Ultimate Legends **0.5.0-beta.5 or newer**: beta 4 predates managed setup.
+Only Git-tracked files enter our source archive. The lock targets Windows x64/Python 3.14;
+`requirements.txt` documents the direct dependencies, while `requirements.lock` pins all
+release-build dependencies and wheel hashes.
+
+All compiled-in MIT/BSD notices are copied both into the setup package's `licenses/` and
+the installed game's `_muac/licenses/`, including both MinHook copies and tiny-json.
+Cancelled or failed managed setups remove only their own newly created staging folder;
+plain `import` retains diagnostic staging. Copy and verification loops check cancellation
+between bounded chunks. A forced kill or cleanup blocked by another process can still leave
+files behind; the reported staging path identifies them without deleting unrelated folders.
 
 Offline helper invocation: `muac-setup.exe setup --source DISC --out NEW_FOLDER --dgvoodoo ORIGINAL_ZIP`.
 `runtime/` beside the executable supplies the verified bundle. JSONL events include `ev` and

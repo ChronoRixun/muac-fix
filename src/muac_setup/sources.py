@@ -1,13 +1,29 @@
 """Read-only, case-insensitive access to a disc image or extracted folder."""
 import io
 import os
-import shutil
 import stat
 from pathlib import Path
 
 import pycdlib
 
 from .layout import SetupError, safe_relative
+
+
+def check_cancel(cancelled):
+    if cancelled():
+        raise SetupError('E_CANCELLED', 'Setup cancelled during file copy.')
+
+
+class CancelWriter:
+    def __init__(self, target, cancelled):
+        self.target, self.cancelled = target, cancelled
+
+    def write(self, data):
+        check_cancel(self.cancelled)
+        return self.target.write(data)
+
+    def __getattr__(self, name):
+        return getattr(self.target, name)
 
 
 def is_reparse(path):
@@ -52,12 +68,12 @@ class Source:
         self.copy_to(relative, target)
         return target.getvalue()
 
-    def copy(self, relative, destination):
+    def copy(self, relative, destination, cancelled=lambda: False):
         destination = Path(destination)
         assert_no_links(destination)
         destination.parent.mkdir(parents=True, exist_ok=True)
         with destination.open('xb') as stream:
-            self.copy_to(relative, stream)
+            self.copy_to(relative, stream, cancelled=cancelled)
         if destination.stat().st_size != self.entry(relative)[1]:
             raise SetupError('E_SOURCE', f'Short source read: {relative}')
 
@@ -78,11 +94,16 @@ class DirectorySource(Source):
                 candidate = Path(root) / name
                 self.add(candidate.relative_to(self.path).as_posix(), candidate, candidate.stat().st_size)
 
-    def copy_to(self, relative, target):
+    def copy_to(self, relative, target, cancelled=lambda: False):
         candidate = self.entry(relative)[0]
         assert_no_links(candidate)
         with candidate.open('rb') as stream:
-            shutil.copyfileobj(stream, target, 1024 * 1024)
+            while True:
+                check_cancel(cancelled)
+                data = stream.read(1024 * 1024)
+                if not data:
+                    break
+                target.write(data)
 
 
 class _Iso9660(pycdlib.PyCdlib):
@@ -122,8 +143,8 @@ class IsoSource(Source):
                 raise
             raise SetupError('E_SOURCE', f'Could not read ISO9660/Joliet disc: {exc}') from exc
 
-    def copy_to(self, relative, target):
-        self.iso.get_file_from_iso_fp(target, **{self.namespace: self.entry(relative)[0]})
+    def copy_to(self, relative, target, cancelled=lambda: False):
+        self.iso.get_file_from_iso_fp(CancelWriter(target, cancelled), **{self.namespace: self.entry(relative)[0]})
 
     def close(self):
         try:

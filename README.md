@@ -40,7 +40,8 @@ The retail mastering has a stale MSI size for its protected executable; only the
 exact known executable fingerprint receives that size correction. Other editions
 and modified disc layouts may need additional profiles.
 
-Interrupted imports leave their staging folder for inspection. Automatic resume,
+Interrupted plain imports leave their staging folder for inspection; managed setup removes
+its own staging folder on handled failure or cancellation. Automatic resume,
 repair, uninstall and the launcher's disc-import wizard are not yet implemented.
 An installed folder is inspected without being modified.
 

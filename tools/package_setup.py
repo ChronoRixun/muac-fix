@@ -14,6 +14,44 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+MIN_LAUNCHER = '0.5.0-beta.5'
+
+
+def runtime_notices(source):
+    notices = {name: (ROOT / 'licenses' / name).read_bytes() for name in
+               ('minhook-BSD.txt', 'mua-controller-fix-MIT.txt', 'xml2-fix-MIT.txt')}
+    notices['SafeDiscLoader2-Minhook.txt'] = (source / 'src/minhook/LICENSE.txt').read_bytes()
+    tiny = (source / 'src/tiny-json.c').read_text(encoding='utf-8')
+    header = tiny.split('/*', 1)[1].split('*/', 1)[0].strip()
+    if 'Permission is hereby' not in header or 'MIT' not in header:
+        raise ValueError('tiny-json license header is missing')
+    notices['tiny-json-MIT.txt'] = (header + '\n').encode('utf-8')
+    return notices
+
+
+def write_notices(source, runtime, licenses):
+    entries = []
+    for name, data in runtime_notices(source).items():
+        (runtime / name).write_bytes(data)
+        (licenses / name).write_bytes(data)
+        entries.append({'source': name, 'target': '_muac/licenses/' + name,
+                        'size': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+    return entries
+
+
+def write_source_archive(root, archive):
+    # Untracked scratch files are never part of a distributable source tree.
+    names = subprocess.check_output(['git', 'ls-files', '--cached', '-z'], cwd=root).decode('utf-8').split('\0')
+    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
+        for name in filter(None, names):
+            file = root / name
+            if file.is_file():
+                z.write(file, name)
+
+
+def make_manifest(archive, version):
+    return {'version': version, 'api': 1, 'content_version': 1, 'zip': archive.name,
+            'size': archive.stat().st_size, 'sha256': sha(archive), 'min_launcher': MIN_LAUNCHER}
 
 
 def run(*args, cwd=ROOT):
@@ -57,6 +95,8 @@ def main():
     package = work / 'frozen/muac-setup'
     runtime = package / 'runtime'
     runtime.mkdir()
+    licenses = package / 'licenses'
+    licenses.mkdir()
     payload = [(args.runtime, 'dinput8.dll', 'dinput8.dll'), (args.safedisc_dll, 'version.dll', 'version.dll'),
         (ROOT / 'packaging/muac-fix.ini', 'muac-fix.ini', 'muac-fix.ini'),
         (ROOT / 'packaging/dgVoodoo.conf', 'dgVoodoo.conf', 'dgVoodoo.conf'),
@@ -69,6 +109,7 @@ def main():
     for origin, name, target in payload:
         shutil.copy2(origin, runtime / name)
         files.append({'source': name, 'target': target, 'size': origin.stat().st_size, 'sha256': sha(origin)})
+    files.extend(write_notices(source, runtime, licenses))
     (runtime / 'package.json').write_text(json.dumps({'schema': 1, 'version': args.version,
         'files': files, 'dgvoodoo': pins['dgvoodoo'], 'safedisc': pins['safedisc']}, indent=2) + '\n')
     sources = package / 'sources'
@@ -81,14 +122,7 @@ def main():
         raise ValueError('pycdlib source archive failed SHA-256 verification')
     subprocess.run(['git', 'archive', '--format=zip', '--output=' + str(sources / 'SafeDiscLoader2-source.zip'),
                     pins['safedisc']['commit']], cwd=source, check=True)
-    names = run('git', 'ls-files', '--cached', '--others', '--exclude-standard').splitlines()
-    with zipfile.ZipFile(sources / 'muac-fix-source.zip', 'w', zipfile.ZIP_DEFLATED) as z:
-        for name in names:
-            file = ROOT / name
-            if file.is_file():
-                z.write(file, name)
-    licenses = package / 'licenses'
-    licenses.mkdir()
+    write_source_archive(ROOT, sources / 'muac-fix-source.zip')
     shutil.copy2(ROOT / 'packaging/THIRD_PARTY.txt', package / 'THIRD_PARTY.txt')
     shutil.copy2(ROOT / 'LICENSE', licenses / 'muac-fix.txt')
     shutil.copy2(source / 'LICENSE', licenses / 'SafeDiscLoader2.txt')
@@ -101,7 +135,7 @@ def main():
                 located = Path(dist.locate_file(file))
                 if located.is_file():
                     shutil.copy2(located, licenses / (project + '-' + file.name))
-    (sources / 'BUILD.txt').write_text('Build using packaging/requirements.txt, runtime/CMakeLists.txt and tools/package_setup.py.\n'
+    (sources / 'BUILD.txt').write_text('Install Windows x64 build dependencies with pip install --require-hashes --only-binary=:all: -r packaging/requirements.lock, then use runtime/CMakeLists.txt and tools/package_setup.py.\n'
         'To modify or replace the LGPL pycdlib library, extract the included source archive, install your modified copy into the packaging Python environment, and rerun tools/package_setup.py. No signing key is required.\n'
         'SafeDiscLoader2: MSBuild version-proxy.vcxproj /t:Rebuild /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 /p:ForceImportBeforeCppTargets=<muac-fix>/packaging/static-runtime.props\n'
         'muac-fix revision: ' + run('git', 'rev-parse', 'HEAD') + '\n'
@@ -112,8 +146,7 @@ def main():
         for file in sorted(package.rglob('*')):
             if file.is_file():
                 z.write(file, file.relative_to(package).as_posix())
-    manifest = {'version': args.version, 'api': 1, 'content_version': 1, 'zip': archive.name,
-                'size': archive.stat().st_size, 'sha256': sha(archive), 'min_launcher': '0.5.0-beta.4'}
+    manifest = make_manifest(archive, args.version)
     (args.out / 'muac-setup.json').write_text(json.dumps(manifest, indent=2) + '\n')
     (args.out / 'SHA256SUMS.txt').write_text(manifest['sha256'] + '  ' + archive.name + '\n')
     print(json.dumps(manifest))

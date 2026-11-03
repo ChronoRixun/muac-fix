@@ -22,6 +22,16 @@ def emit(event, data):
     print(json.dumps({'event': event, 'ev': event, **data}), flush=True)
 
 
+def listen_for_cancel(stream, cancel):
+    try:
+        for line in stream:
+            if line.strip() == 'cancel':
+                cancel.set()
+                break
+    except (OSError, ValueError):
+        pass
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='MUA 2006 local disc setup (experimental).')
     parser.add_argument('--version', action='version', version=__version__)
@@ -40,16 +50,8 @@ def main(argv=None):
     check.add_argument('--out', required=True)
     args = parser.parse_args(argv)
     cancel = threading.Event()
-    def listen():
-        try:
-            for line in sys.stdin:
-                if line.strip() == 'cancel':
-                    cancel.set()
-                    break
-        except (OSError, ValueError):
-            pass
     if args.command in ('import', 'setup') and not sys.stdin.isatty():
-        threading.Thread(target=listen, daemon=True).start()
+        threading.Thread(target=listen_for_cancel, args=(sys.stdin, cancel), daemon=True).start()
     try:
         if args.command == 'info':
             with open_source(args.source) as source:

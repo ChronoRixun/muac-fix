@@ -19,9 +19,16 @@ STAMP = '_muac/setup.json'
 INSTALL_SENTINELS = ('game.exe', 'libIGCore.dll', 'libIGGfx.dll', 'data/herostat.engb', 'build.ini')
 
 
-def digest(path):
+def digest(path, cancelled=lambda: False):
+    result = hashlib.sha256()
     with Path(path).open('rb') as stream:
-        return hashlib.file_digest(stream, 'sha256').hexdigest()
+        while True:
+            if cancelled():
+                raise SetupError('E_CANCELLED', 'Setup cancelled during verification.')
+            block = stream.read(1024 * 1024)
+            if not block:
+                return result.hexdigest()
+            result.update(block)
 
 
 def inspect_executable(data):
@@ -106,8 +113,8 @@ def import_disc(source_path, destination, emit=lambda *_: None, prepare=None, ca
         extra = sum(source.entry(name)[1] for name in cabinet_names.values()) if source.kind == 'iso' else 0
         if shutil.disk_usage(destination.parent).free < info['bytes'] + extra + 128 * 1024 * 1024:
             raise SetupError('E_SPACE', 'Not enough free space for installation and temporary cabinet extraction.')
-        # Only a new sibling staging directory is written. Failed imports leave it
-        # for diagnosis; never delete a directory chosen by the player.
+        # Only our newly created sibling stage may be removed on managed failure.
+        # Plain imports retain their historical diagnostic-stage behavior.
         stage = Path(tempfile.mkdtemp(prefix='.muac-stage-', dir=destination.parent))
         emit('stage', {'id': 'extract', 'state': 'running', 'staging': str(stage)})
         try:
@@ -127,13 +134,13 @@ def import_disc(source_path, destination, emit=lambda *_: None, prepare=None, ca
                                 return source.entry(actual)[0]
                             cached = Path(tmp) / actual
                             if not cached.exists():
-                                source.copy(actual, cached)
+                                source.copy(actual, cached, cancelled=cancelled)
                             return cached
                         extract_cabinet(resolve_volume(cabinet), members, stage, resolve_next=resolve_volume, cancelled=cancelled)
                 else:
                     for file in members:
                         check_cancel()
-                        source.copy(file.source, stage / file.path)
+                        source.copy(file.source, stage / file.path, cancelled=cancelled)
                 done += len(members)
                 emit('progress', {'stage': 'extract', 'done': done, 'total': len(files), 'cabinet': cabinet})
             emit('stage', {'id': 'verify', 'state': 'running'})
@@ -143,7 +150,7 @@ def import_disc(source_path, destination, emit=lambda *_: None, prepare=None, ca
                 path = stage / file.path
                 if path.stat().st_size != file.size:
                     raise SetupError('E_VERIFY', f'File size differs from MSI: {file.path}')
-                manifest.append({'path': file.path, 'size': file.size, 'sha256': digest(path)})
+                manifest.append({'path': file.path, 'size': file.size, 'sha256': digest(path, cancelled=cancelled)})
                 if index % 1000 == 0:
                     emit('progress', {'stage': 'verify', 'done': index, 'total': len(files)})
             stamp = {'schema': 1, 'tool_version': __version__, 'complete': True,
@@ -160,7 +167,19 @@ def import_disc(source_path, destination, emit=lambda *_: None, prepare=None, ca
                 destination.rmdir()  # only the checked empty directory
             stage.rename(destination)
         except BaseException:
-            emit('incomplete', {'staging': str(stage), 'message': 'Import did not finish. No ready installation was registered.'})
+            cleaned = False
+            if prepare is not None:
+                try:
+                    assert_no_links(stage)
+                    resolved = stage.resolve()
+                    if resolved.parent != destination.parent.resolve() or not resolved.name.startswith('.muac-stage-'):
+                        raise SetupError('E_PATH', 'Staging cleanup refused an unexpected path.')
+                    shutil.rmtree(resolved)
+                    cleaned = True
+                except (OSError, SetupError):
+                    pass  # Preserve the original error; report the leftover explicitly.
+            emit('incomplete', {'staging': '' if cleaned else str(stage), 'cleaned': cleaned,
+                'message': 'Import did not finish. No ready installation was registered.'})
             raise
         return {'install': str(destination), 'file_count': len(files), 'bytes': info['bytes'],
                 'files_complete': True, 'runtime': info['runtime'], 'prepared': prepare is not None, 'playable': False}
