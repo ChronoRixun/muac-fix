@@ -1,7 +1,11 @@
 # Windowed startup proof
 
+> **Dated record.** Since 0.2.0, setup installs this profile: the launcher downloads the official dgVoodoo2
+> archive, and setup verifies it and extracts the x86 `D3D9.dll` with [packaging/dgVoodoo.conf](../packaging/dgVoodoo.conf).
+> dgVoodoo2 is still not redistributed by this project. See [packaging.md](packaging.md).
+
 Tested on Windows 11 with the original retail executable and the source-built
-SafeDiscLoader2 described in retail-proof.md. The game's video menu sets
+SafeDiscLoader2 described in [retail-proof.md](retail-proof.md). The game's video menu sets
 resolution, but does not provide fullscreen/windowed/borderless selection.
 
 Runtime: official [dgVoodoo 2.87.6](https://github.com/dege-diosg/dgVoodoo2/releases/tag/2.87.6),

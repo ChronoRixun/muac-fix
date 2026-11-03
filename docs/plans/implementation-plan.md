@@ -1,5 +1,8 @@
 # MUA 2006 local setup proof
 
+> **Historical plan**, kept for the record. It predates the 0.2.0 release; for the current state see the
+> [README](../../README.md) and the [docs index](../README.md).
+
 Goal: turn the player's ISO or extracted disc folder into a verifiable local
 installation, prove a compatible executable and then connect Ultimate Legends.
 The user approved a local proof first and a public muac-fix repository. Launcher
@@ -34,6 +37,7 @@ runtime checks. Launcher UI/build validation follows only once runtime is proven
 
 Current gate: source-built SafeDiscLoader2 starts the unchanged retail executable;
 dgVoodoo 2.87.6 with both screen-mode overrides disabled gives a real 1080p window
-without changing desktop resolution. See retail-proof.md and windowed-display.md.
+without changing desktop resolution. See [retail-proof.md](../retail-proof.md) and
+[windowed-display.md](../windowed-display.md).
 Gameplay/save-load validation and runtime packaging are required before launcher
 integration; no Play-ready state or finished runtime fix is being claimed.

@@ -1,1 +1,3 @@
 GAME_TEXT_ATTR pyproject.toml # Project description authored here, not game text.
+MEDIA docs/images/banner.png # README banner: original project art from Claude Design, no game imagery or official logos.
+MEDIA docs/images/social-preview.png # GitHub social preview: original project art from Claude Design, no game imagery or official logos.

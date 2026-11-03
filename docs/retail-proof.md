@@ -1,5 +1,9 @@
 # Retail import proof — 2026-11-02
 
+> **Dated record.** Since 0.2.0, `muac-setup setup` installs the source-built SafeDiscLoader2 and the verified
+> dgVoodoo2 DLL itself; see [packaging.md](packaging.md). Gameplay, saving/loading and multiplayer are still
+> not certified.
+
 Status: file import proven on Windows 11; a source-built SafeDiscLoader2 now
 gets the unchanged retail executable into its rendered startup sequence.
 Gameplay and saving remain unverified. This is not a released compatibility fix.
@@ -71,7 +75,7 @@ The official dgVoodoo 2.87.6 release was downloaded with its GitHub asset SHA-25
 verified. With BOTH FullScreenMode=false and AppControlledScreenMode=false,
 the game opens in a decorated 1920x1080 window. The user's saved 2560x1440 desktop
 mode remains unchanged. The process responds and startup movies advance.
-See windowed-display.md for the exact configuration and validation limits.
+See [windowed-display.md](windowed-display.md) for the exact configuration and validation limits.
 
 Next: confirm window behavior, graphics initialization, gameplay, saving/loading,
 disc-independent startup and controller input. Package and license the runtime

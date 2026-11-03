@@ -5,6 +5,8 @@ build/
 dist/
 *.egg-info/
 .pytest_cache/
+.vs/
+*.log
 # Game material stays outside the repository.
 *.exe
 *.dll

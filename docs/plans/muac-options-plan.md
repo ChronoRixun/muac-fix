@@ -1,5 +1,8 @@
 # MUAC runtime and launcher options
 
+> **Historical plan**, kept for the record. It predates the 0.2.0 release; for the current state see the
+> [README](../../README.md) and the [docs index](../README.md).
+
 The user requested watermark removal, Xbox Bluetooth controller support, a
 switch to release/capture the mouse, and the MUAC options in Ultimate Legends.
 Work stays on codex/retail-setup and launcher codex/muac-setup (beta 3 base).
