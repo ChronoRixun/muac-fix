@@ -17,7 +17,9 @@ class SourceTests(unittest.TestCase):
     def test_shared_wine_mount_point_cases(self):
         cases = json.loads((Path(__file__).parent / 'fixtures/wine-mount-points.json').read_text())
         with tempfile.TemporaryDirectory() as tmp:
-            mount = Path(tmp) / 'home'
+            # Resolve 8.3 short names (CI runners' TEMP is a short path) so realpath == abspath for the
+            # self-mount case, as it is for a real Wine mount point.
+            mount = Path(os.path.realpath(tmp)) / 'home'
             mount.mkdir()
             real = os.path.realpath
             lstat = Path.lstat
