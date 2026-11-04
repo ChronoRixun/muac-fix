@@ -1,4 +1,5 @@
 import io
+import json
 import os
 import subprocess
 import tempfile
@@ -13,6 +14,28 @@ from muac_setup.sources import open_source, assert_no_links, is_wine, is_wine_dr
 
 
 class SourceTests(unittest.TestCase):
+    def test_shared_wine_mount_point_cases(self):
+        cases = json.loads((Path(__file__).parent / 'fixtures/wine-mount-points.json').read_text())
+        with tempfile.TemporaryDirectory() as tmp:
+            mount = Path(tmp) / 'home'
+            mount.mkdir()
+            real = os.path.realpath
+            lstat = Path.lstat
+            for case in cases:
+                with self.subTest(case=case['name']), \
+                        patch('muac_setup.sources.is_wine', return_value=case['wine']), \
+                        patch('muac_setup.sources.is_reparse', side_effect=lambda p: p == mount), \
+                        patch.object(Path, 'lstat', autospec=True, side_effect=lambda p: Mock(
+                            st_reparse_tag=case['tag']) if p == mount else lstat(p)), \
+                        patch.object(Path, 'is_dir', return_value=case['directory']), \
+                        patch('muac_setup.sources.os.path.realpath', side_effect=lambda p, **kw: str(
+                            mount / 'elsewhere') if case['redirects'] and Path(p) == mount else real(p, **kw)):
+                    if case['allowed']:
+                        assert_no_links(mount / 'deck/game/new-output')
+                    else:
+                        with self.assertRaises(SetupError):
+                            assert_no_links(mount / 'deck/game/new-output')
+
     def test_wine_detection_uses_ntdll_export(self):
         import muac_setup.sources as sources
         is_wine.cache_clear()

@@ -5,9 +5,12 @@
 MUA Classic Fix's x86 dinput8.dll, pinned source-built SafeDiscLoader2 version.dll, default
 configuration, license notices and corresponding source archives. It contains no game files.
 
-The original dgVoodoo 2.87.6 archive is downloaded by the launcher separately, specifically
+On native Windows, the original dgVoodoo 2.87.6 archive is downloaded by the launcher separately, specifically
 for the selected MUA 2006 installation. Both archive and x86 DLL hashes are pinned in
 `packaging/dependencies.json`. The helper extracts that one DLL only after verification.
+Wine/Proton skips the archive and DLL and uses the platform's D3D9 implementation instead.
+The unused default `dgVoodoo.conf` remains in the common bundle. Runtime records identify the backend
+as `dgvoodoo` or `wine-d3d9` and list only the runtime files actually placed.
 Upstream terms: https://dege.freeweb.hu/dgVoodoo2/ReadmeGeneral/
 
 Build on Windows with Python 3.14 and Visual Studio C++ tools:
@@ -26,8 +29,11 @@ The manual **Package setup preview** workflow performs these steps and uploads a
 It does not publish or tag. Review the artifact before releasing it, including its manifest,
 source archives, licenses, PE architecture and absence of game content. The launcher requires
 a published manifest asset on the selected update channel to perform automatic downloads.
-The manifest requires Ultimate Legends **0.5.0-beta.6 or newer**: beta 4 predates managed setup, and beta 5
-cannot remove a contained staging folder left by a cancelled setup that outlasts its cancel grace.
+The 0.2.2 manifest requires Ultimate Legends **0.5.0-beta.8 or newer** (final 0.5.0 also qualifies).
+The coordinator assigns the launcher's release identity. Earlier launchers lack the matching Wine mount
+checks, graphics settings and migration transaction. In-place Update is implemented by the launcher,
+not the helper: on Wine it retains a hash-named backup of an inherited `D3D9.dll`, records the removal,
+then removes the live DLL transactionally. Existing settings and game files are preserved.
 Only Git-tracked files enter our source archive. The lock targets Windows x64/Python 3.14;
 `requirements.txt` documents the direct dependencies, while `requirements.lock` pins all
 release-build dependencies and wheel hashes.
@@ -65,8 +71,11 @@ the stage into the final output. There is no cancellation point in this short
 promotion sequence. Abrupt termination during these renames can still require
 manual recovery of a sibling stage; the launcher never deletes sibling paths.
 
-Wine is detected by `ntdll!wine_get_version`. A reparse-point exception applies
-only to an absolute DOS drive root (such as `Z:\`), allowing Wine's host-drive
-mapping. Source/output ancestors below the root, source-tree entries, and ISO
-paths still reject links and junctions. No launcher path-validation relaxation is
-needed for starting setup; its forced-kill cleanup uses the same root exception.
+Wine is detected by `ntdll!wine_get_version`. Reparse-point exceptions apply to
+absolute DOS drive roots (such as `Z:\`) and directory mount-point tags
+(`0xA0000003`) whose final path equals their own path, as Wine represents Linux
+mount points. Native Windows receives no exemption. Redirected junctions and
+symbolic links remain refused, including inside the source/game tree. Source-tree
+entries are still scanned without following links. The matching launcher applies
+the same classifier to forced-kill cleanup and native runtime Update. Both repos
+carry the same synthetic mount-point test vectors.

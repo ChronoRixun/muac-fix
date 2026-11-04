@@ -50,13 +50,27 @@ def is_wine_drive_root(path):
             path == type(path)(path.anchor) and bool(path.root) and is_wine())
 
 
+def is_wine_mount_point(path):
+    # Wine exposes Unix mounts as directory mount tags resolving to themselves.
+    # A real junction redirects elsewhere; symlink/unknown tags are never exempt.
+    if not is_wine():
+        return False
+    try:
+        if getattr(path.lstat(), 'st_reparse_tag', 0) != 0xA0000003 or not path.is_dir():
+            return False
+        real = os.path.realpath(path, strict=True).removeprefix('\\\\?\\')
+        return os.path.normcase(real) == os.path.normcase(os.path.abspath(path))
+    except (OSError, AttributeError, ValueError):
+        return False
+
+
 def assert_no_links(path):
     for part in (path, *path.parents):
         try:
             linked = is_reparse(part)  # lstat also sees broken links/junctions.
         except FileNotFoundError:
             continue
-        if linked and not is_wine_drive_root(part):
+        if linked and not is_wine_drive_root(part) and not is_wine_mount_point(part):
             raise SetupError('E_PATH', 'Linked folders are not supported for setup.')
 
 
