@@ -36,6 +36,7 @@ class RuntimePackageTests(unittest.TestCase):
                     patch('muac_setup.sources.is_wine', return_value=True):
                 prepare_runtime(game, bundle, archive)
             self.assertFalse((game / 'D3D9.dll').exists())
+            # window_focus.cpp still consumes dgVoodoo.conf to enable background focus handling.
             for name in ('dinput8.dll', 'version.dll', 'muac-fix.ini', 'dgVoodoo.conf'):
                 self.assertTrue((game / name).is_file(), name)
             stamp = json.loads((game / '_muac/runtime.json').read_text())

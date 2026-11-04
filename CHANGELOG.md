@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.2 (unreleased)
+## 0.2.2 (draft; unreleased)
 
 ### Added
 - Wine/Proton setup uses the platform's D3D9 implementation. It does not require or place dgVoodoo's
@@ -11,6 +11,10 @@
 ### Changed
 - Requires Ultimate Legends **0.5.0-beta.8 or newer**, including final 0.5.0. The matching launcher implements
   Wine cleanup/update guards and backs up/removes a Windows installation's D3D9.dll during Update.
+- Keep `dgVoodoo.conf` on Wine even though dgVoodoo's DLL is omitted: the native fix reads its
+  `FullScreenMode` / `AppControlledScreenMode` values to enable the Run in background focus policy.
+- The matching launcher draft uses atomic update journals and runtime records with backup-based recovery;
+  it also explains same-version Proton migrations and platform-specific graphics/background behavior.
 - Native Windows keeps the verified dgVoodoo setup path. The native fix DLL is unchanged.
 
 ### Validation limits
