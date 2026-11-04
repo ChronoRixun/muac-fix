@@ -12,8 +12,8 @@ with Xbox controllers, showing the game's own Xbox button art. It is made for
 This project ships no game content: no game files, no modified executables, no disc images. `Game.exe` stays
 byte-for-byte as it is on your disc.
 
-> **Current release: [0.2.0](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.0)**, the first release.
-> Automatic setup needs Ultimate Legends 0.5.0-beta.5 or newer.
+> **Current release: [0.2.1](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.1).** Automatic setup needs
+> Ultimate Legends 0.5.0-beta.6 or newer. What changed: [CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
@@ -40,7 +40,7 @@ byte-for-byte as it is on your disc.
 | **Marvel: Ultimate Alliance (2006) for PC, retail DVD** | Your own disc, as an ISO, the mounted DVD or a copied disc folder. Supported: the English PC DVD with MSI product code `{932FB3F3-594D-4600-ABFA-F2DE80A14214}`. The 2016 Steam release is a different build; for it, use [MUA Controller Fix](https://github.com/ChronoRixun/mua-controller-fix). |
 | **Windows** | Tested on Windows 11. |
 | **Disk space** | About 7 GB for the game, plus room for temporary cabinet extraction when you set up from an ISO. |
-| **Ultimate Legends 0.5.0-beta.5 or newer** | For automatic setup. Manual setup (below) doesn't need it. |
+| **Ultimate Legends 0.5.0-beta.6 or newer** | For automatic setup. Manual setup (below) doesn't need it. |
 
 ## Getting started
 
@@ -56,7 +56,7 @@ byte-for-byte as it is on your disc.
 
 ### By hand (command line)
 
-1. Download `muac-setup-0.2.0-win64.zip` from the [release](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.0),
+1. Download `muac-setup-0.2.1-win64.zip` from the [release](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.1),
    check it against `SHA256SUMS.txt`, and unzip it anywhere. It needs no Python.
 2. Download `dgVoodoo2_87_6.zip` from [dgVoodoo2's official 2.87.6 release](https://github.com/dege-diosg/dgVoodoo2/releases/tag/2.87.6).
    Setup checks its SHA-256 and refuses any other file.
@@ -95,12 +95,12 @@ How the native fix works: [docs/runtime.md](docs/runtime.md).
 
 ## The release
 
-[v0.2.0](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.0) has three assets:
+[v0.2.1](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.1) has three assets:
 
 | Asset | What it is |
 |---|---|
-| `muac-setup-0.2.0-win64.zip` | The offline setup helper. Contains MUA Classic Fix's `dinput8.dll`, the source-built SafeDiscLoader2 `version.dll`, default `muac-fix.ini` and `dgVoodoo.conf`, every licence notice, and the corresponding source (this project, SafeDiscLoader2 at its pinned commit, and pycdlib). No game files, and no dgVoodoo2. |
-| `muac-setup.json` | The manifest Ultimate Legends reads: version, the zip's size and SHA-256, and the minimum launcher version (0.5.0-beta.5). |
+| `muac-setup-0.2.1-win64.zip` | The offline setup helper. Contains MUA Classic Fix's `dinput8.dll`, the source-built SafeDiscLoader2 `version.dll`, default `muac-fix.ini` and `dgVoodoo.conf`, every licence notice, and the corresponding source (this project, SafeDiscLoader2 at its pinned commit, and pycdlib). No game files, and no dgVoodoo2. |
+| `muac-setup.json` | The manifest Ultimate Legends reads: version, the zip's size and SHA-256, and the minimum launcher version (0.5.0-beta.6). |
 | `SHA256SUMS.txt` | The zip's SHA-256. |
 
 How the package is built and checked: [docs/packaging.md](docs/packaging.md).

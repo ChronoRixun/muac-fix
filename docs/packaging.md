@@ -26,7 +26,8 @@ The manual **Package setup preview** workflow performs these steps and uploads a
 It does not publish or tag. Review the artifact before releasing it, including its manifest,
 source archives, licenses, PE architecture and absence of game content. The launcher requires
 a published manifest asset on the selected update channel to perform automatic downloads.
-The manifest requires Ultimate Legends **0.5.0-beta.5 or newer**: beta 4 predates managed setup.
+The manifest requires Ultimate Legends **0.5.0-beta.6 or newer**: beta 4 predates managed setup, and beta 5
+cannot remove a contained staging folder left by a cancelled setup that outlasts its cancel grace.
 Only Git-tracked files enter our source archive. The lock targets Windows x64/Python 3.14;
 `requirements.txt` documents the direct dependencies, while `requirements.lock` pins all
 release-build dependencies and wheel hashes.
