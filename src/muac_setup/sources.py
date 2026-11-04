@@ -1,5 +1,7 @@
 """Read-only, case-insensitive access to a disc image or extracted folder."""
 import io
+import ctypes
+from functools import lru_cache
 import os
 import stat
 from pathlib import Path
@@ -30,9 +32,31 @@ def is_reparse(path):
     return bool(path.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT) if os.name == 'nt' else path.is_symlink()
 
 
+@lru_cache(maxsize=1)
+def is_wine():
+    if os.name != 'nt':
+        return False
+    try:
+        # Wine exports this from the already loaded ntdll; no environment-variable
+        # heuristics and no exception for arbitrary reparse points on Windows.
+        return callable(ctypes.WinDLL('ntdll').wine_get_version)
+    except (AttributeError, OSError):
+        return False
+
+
+def is_wine_drive_root(path):
+    # Only X:\ itself, never UNC shares, relative paths or links below X:\.
+    return (len(path.drive) == 2 and path.drive[1] == ':' and
+            path == type(path)(path.anchor) and bool(path.root) and is_wine())
+
+
 def assert_no_links(path):
     for part in (path, *path.parents):
-        if part.exists() and is_reparse(part):
+        try:
+            linked = is_reparse(part)  # lstat also sees broken links/junctions.
+        except FileNotFoundError:
+            continue
+        if linked and not is_wine_drive_root(part):
             raise SetupError('E_PATH', 'Linked folders are not supported for setup.')
 
 
@@ -158,5 +182,6 @@ def open_source(path):
     if path.is_dir():
         return DirectorySource(path)
     if path.is_file() and path.suffix.lower() == '.iso':
+        assert_no_links(path.absolute())
         return IsoSource(path)
     raise SetupError('E_SOURCE', 'Choose a PC DVD ISO, extracted DVD folder or installed game folder.')

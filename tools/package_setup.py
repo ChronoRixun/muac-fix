@@ -14,7 +14,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MIN_LAUNCHER = '0.5.0-beta.5'
+MIN_LAUNCHER = '0.5.0-beta.6'
 
 
 def runtime_notices(source):

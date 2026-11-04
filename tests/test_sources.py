@@ -1,15 +1,97 @@
 import io
+import os
+import subprocess
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
+from unittest.mock import Mock, patch
 
 import pycdlib
 
 from muac_setup.layout import SetupError
-from muac_setup.sources import open_source
+from muac_setup.sources import open_source, assert_no_links, is_wine, is_wine_drive_root, DirectorySource
 
 
 class SourceTests(unittest.TestCase):
+    def test_wine_detection_uses_ntdll_export(self):
+        import muac_setup.sources as sources
+        is_wine.cache_clear()
+        try:
+            with patch.object(sources.os, 'name', 'nt'), patch.object(sources.ctypes, 'WinDLL', create=True) as dll:
+                dll.return_value = Mock(wine_get_version=lambda: b'synthetic')
+                self.assertTrue(is_wine())
+                dll.assert_called_once_with('ntdll')
+                is_wine.cache_clear()
+                dll.side_effect = OSError('No loader')
+                self.assertFalse(is_wine())
+                is_wine.cache_clear()
+                dll.side_effect = None
+                dll.return_value = object()  # Native ntdll has no Wine export.
+                self.assertFalse(is_wine())
+        finally:
+            is_wine.cache_clear()
+
+    def test_only_wine_drive_root_can_be_a_link(self):
+        # Model a Wine Z: mapping without running Wine or touching a real drive.
+        WinPath = PureWindowsPath
+        path = WinPath('Z:/fixture/nested/disc')
+        root = WinPath('Z:/')
+        for wine in (False, True):
+            with self.subTest(wine=wine), patch('muac_setup.sources.is_wine', return_value=wine):
+                with patch('muac_setup.sources.is_reparse', side_effect=lambda p: p == root):
+                    if wine:
+                        assert_no_links(path)
+                        assert_no_links(WinPath('Z:/new/output/not-created'))
+                    else:
+                        with self.assertRaises(SetupError):
+                            assert_no_links(path)
+                for linked in (path, WinPath('Z:/fixture'), WinPath('Z:/fixture/nested')):
+                    with patch('muac_setup.sources.is_reparse', side_effect=lambda p: p in (root, linked)):
+                        with self.assertRaises(SetupError):
+                            assert_no_links(path)
+                for candidate in ('Z:', 'Z:relative', 'Z:/fixture', '//server/share/'):
+                    self.assertFalse(is_wine_drive_root(WinPath(candidate)))
+
+    def test_source_tree_and_iso_still_refuse_links_under_wine(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'disc').mkdir()
+            link = root / 'disc' / 'linked'
+            link.mkdir()
+            with patch('muac_setup.sources.is_wine', return_value=True), patch(
+                    'muac_setup.sources.is_reparse', side_effect=lambda p: p == link):
+                with self.assertRaises(SetupError):
+                    DirectorySource(root / 'disc')
+                with self.assertRaises(SetupError):
+                    assert_no_links(link / 'new-output')
+            image = root / 'disc.iso'
+            image.write_bytes(b'synthetic')
+            with patch('muac_setup.sources.is_wine', return_value=True), patch(
+                    'muac_setup.sources.is_reparse', side_effect=lambda p: p == image):
+                with self.assertRaises(SetupError) as error:
+                    open_source(image)
+                self.assertEqual(error.exception.code, 'E_PATH')
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows directory junctions')
+    def test_real_junction_in_source_and_output_remains_forbidden_under_wine(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / 'disc'
+            source.mkdir()
+            outside = root / 'outside'
+            outside.mkdir()
+            (outside / 'keep.txt').write_text('keep')
+            link = source / 'linked'
+            subprocess.run(['cmd', '/c', 'mklink', '/J', str(link), str(outside)],
+                           check=True, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            with patch('muac_setup.sources.is_wine', return_value=True):
+                with self.assertRaises(SetupError):
+                    DirectorySource(source)
+                with self.assertRaises(SetupError):
+                    assert_no_links(link / 'new-output')
+            self.assertEqual((outside / 'keep.txt').read_text(), 'keep')
+            link.rmdir()  # Remove only this test's junction, never its target.
+
     def test_large_folder_and_iso_copy_can_be_cancelled_mid_file(self):
         for kind in ('folder', 'iso'):
             with self.subTest(kind=kind), tempfile.TemporaryDirectory() as tmp:

@@ -26,7 +26,7 @@ class RuntimePackageTests(unittest.TestCase):
         archive = root / 'graphics.zip'
         with zipfile.ZipFile(archive, 'w') as z:
             z.writestr('MS/x86/D3D9.dll', b'graphics fixture')
-        manifest = {'schema': 1, 'version': '0.2.0', 'files': files, 'dgvoodoo': {
+        manifest = {'schema': 1, 'version': '0.2.1', 'files': files, 'dgvoodoo': {
             'url': 'https://example.invalid/fixture.zip', 'size': archive.stat().st_size,
             'sha256': sha(archive.read_bytes()), 'member': 'MS/x86/D3D9.dll',
             'dll_size': 16, 'dll_sha256': sha(b'graphics fixture')}}

@@ -26,7 +26,8 @@ The manual **Package setup preview** workflow performs these steps and uploads a
 It does not publish or tag. Review the artifact before releasing it, including its manifest,
 source archives, licenses, PE architecture and absence of game content. The launcher requires
 a published manifest asset on the selected update channel to perform automatic downloads.
-The manifest requires Ultimate Legends **0.5.0-beta.5 or newer**: beta 4 predates managed setup.
+The manifest requires Ultimate Legends **0.5.0-beta.6 or newer**: beta 4 predates managed setup, and beta 5
+cannot remove a contained staging folder left by a cancelled setup that outlasts its cancel grace.
 Only Git-tracked files enter our source archive. The lock targets Windows x64/Python 3.14;
 `requirements.txt` documents the direct dependencies, while `requirements.lock` pins all
 release-build dependencies and wheel hashes.
@@ -48,3 +49,24 @@ The full SafeDiscLoader2 source, our source, exact pycdlib LGPL source archive a
 instructions are included with the package. End users can rebuild with a modified pycdlib;
 there is no required signing key. Versioned source and build configuration remain available
 alongside binary delivery. Keep all upstream license notices when redistributing.
+
+## Managed staging and Wine paths
+
+Managed `setup` creates its `.muac-stage-*` as a direct child of the chosen output
+folder and reports it in the `extract` stage event. A `cleanup` stage event is
+flushed before handled failure/cancellation deletion starts. The launcher can
+finish deleting that exact contained stage after forcibly ending an unresponsive
+helper. Plain `import` retains its sibling diagnostic-stage behavior.
+
+After verification and runtime preparation, managed setup refuses unrelated files
+added to the output container. It briefly detaches the verified stage beside the
+output using a same-volume rename, removes the now-empty container, then renames
+the stage into the final output. There is no cancellation point in this short
+promotion sequence. Abrupt termination during these renames can still require
+manual recovery of a sibling stage; the launcher never deletes sibling paths.
+
+Wine is detected by `ntdll!wine_get_version`. A reparse-point exception applies
+only to an absolute DOS drive root (such as `Z:\`), allowing Wine's host-drive
+mapping. Source/output ancestors below the root, source-tree entries, and ISO
+paths still reject links and junctions. No launcher path-validation relaxation is
+needed for starting setup; its forced-kill cleanup uses the same root exception.

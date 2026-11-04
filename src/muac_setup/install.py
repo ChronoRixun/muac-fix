@@ -113,9 +113,14 @@ def import_disc(source_path, destination, emit=lambda *_: None, prepare=None, ca
         extra = sum(source.entry(name)[1] for name in cabinet_names.values()) if source.kind == 'iso' else 0
         if shutil.disk_usage(destination.parent).free < info['bytes'] + extra + 128 * 1024 * 1024:
             raise SetupError('E_SPACE', 'Not enough free space for installation and temporary cabinet extraction.')
-        # Only our newly created sibling stage may be removed on managed failure.
-        # Plain imports retain their historical diagnostic-stage behavior.
-        stage = Path(tempfile.mkdtemp(prefix='.muac-stage-', dir=destination.parent))
+        # Managed setup reports a direct child of the chosen output, so the
+        # launcher can safely finish cleanup after a forced helper termination.
+        # Plain imports retain their historical sibling diagnostic stage.
+        managed = prepare is not None
+        if managed:
+            destination.mkdir(exist_ok=True)
+        stage = Path(tempfile.mkdtemp(prefix='.muac-stage-', dir=destination if managed else destination.parent))
+        stage_parent = stage.parent
         emit('stage', {'id': 'extract', 'state': 'running', 'staging': str(stage)})
         try:
             groups = defaultdict(list)
@@ -162,20 +167,40 @@ def import_disc(source_path, destination, emit=lambda *_: None, prepare=None, ca
                 emit('stage', {'id': 'runtime', 'state': 'running'})
                 prepare(stage)
             check_cancel()
-            check_destination(source_path, destination)
+            if managed:
+                assert_no_links(destination)
+                if set(destination.iterdir()) != {stage}:
+                    raise SetupError('E_DESTINATION', 'Output changed during setup; unrelated files were kept.')
+                # All expensive work is finished. Detach the verified stage with
+                # same-volume renames, then publish as for an ordinary import.
+                # No cancellation point inside this short promotion sequence.
+                publish = destination.parent / stage.name
+                if publish.exists() or publish.is_symlink():
+                    raise SetupError('E_DESTINATION', 'Staging promotion path already exists.')
+                stage = stage.rename(publish)
+                stage_parent = stage.parent
+            else:
+                check_destination(source_path, destination)
             if destination.exists():
                 destination.rmdir()  # only the checked empty directory
             stage.rename(destination)
         except BaseException:
             cleaned = False
-            if prepare is not None:
+            if managed:
+                emit('stage', {'id': 'cleanup', 'state': 'running', 'staging': str(stage)})
                 try:
                     assert_no_links(stage)
                     resolved = stage.resolve()
-                    if resolved.parent != destination.parent.resolve() or not resolved.name.startswith('.muac-stage-'):
+                    if resolved.parent != stage_parent.resolve() or not resolved.name.startswith('.muac-stage-'):
                         raise SetupError('E_PATH', 'Staging cleanup refused an unexpected path.')
                     shutil.rmtree(resolved)
                     cleaned = True
+                    # Never remove a pre-existing or concurrently populated tree.
+                    if stage_parent == destination:
+                        try:
+                            destination.rmdir()
+                        except OSError:
+                            pass
                 except (OSError, SetupError):
                     pass  # Preserve the original error; report the leftover explicitly.
             emit('incomplete', {'staging': '' if cleaned else str(stage), 'cleaned': cleaned,
