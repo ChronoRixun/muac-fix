@@ -12,8 +12,9 @@ with Xbox controllers, showing the game's own Xbox button art. It is made for
 This project ships no game content: no game files, no modified executables, no disc images. `Game.exe` stays
 byte-for-byte as it is on your disc.
 
-> **Current release: [0.2.1](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.1).** Automatic setup needs
-> Ultimate Legends 0.5.0-beta.6 or newer. What changed: [CHANGELOG.md](CHANGELOG.md).
+> **Development version: 0.2.2 (unreleased).** Automatic setup needs Ultimate Legends 0.5.0-beta.8 or newer
+> (final 0.5.0 also qualifies). The latest published release is
+> [0.2.1](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.1). What changed: [CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
@@ -38,9 +39,9 @@ byte-for-byte as it is on your disc.
 | | |
 |---|---|
 | **Marvel: Ultimate Alliance (2006) for PC, retail DVD** | Your own disc, as an ISO, the mounted DVD or a copied disc folder. Supported: the English PC DVD with MSI product code `{932FB3F3-594D-4600-ABFA-F2DE80A14214}`. The 2016 Steam release is a different build; for it, use [MUA Controller Fix](https://github.com/ChronoRixun/mua-controller-fix). |
-| **Windows** | Tested on Windows 11. |
+| **Windows or Wine/Proton** | Windows 11; 0.2.2 adds Wine/Proton setup handling. Full setup and migration on Linux still need release validation. |
 | **Disk space** | About 7 GB for the game, plus room for temporary cabinet extraction when you set up from an ISO. |
-| **Ultimate Legends 0.5.0-beta.6 or newer** | For automatic setup. Manual setup (below) doesn't need it. |
+| **Ultimate Legends 0.5.0-beta.8 or newer** | For automatic setup with 0.2.2. Final 0.5.0 also qualifies. Manual setup (below) doesn't need it. |
 
 ## Getting started
 
@@ -50,7 +51,8 @@ byte-for-byte as it is on your disc.
    PC)** and choose **Set up**.
 2. Pick your disc ISO or disc folder, then a new or empty folder for the game.
 3. The launcher downloads this project's checked `muac-setup` package from your update channel, plus the original
-   dgVoodoo2 2.87.6 archive. It checks both against their SHA-256 and runs setup on your PC. You can hide or cancel
+   dgVoodoo2 2.87.6 archive on native Windows. Wine/Proton uses its own D3D9 and skips that archive and DLL.
+   It checks the files it uses against their SHA-256 and runs setup on your PC. You can hide or cancel
    setup, and an unfinished setup is never registered as ready.
 4. **Play.** The game's page has the window, input, mouse and OpenSpy options.
 
@@ -59,7 +61,8 @@ byte-for-byte as it is on your disc.
 1. Download `muac-setup-0.2.1-win64.zip` from the [release](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.1),
    check it against `SHA256SUMS.txt`, and unzip it anywhere. It needs no Python.
 2. Download `dgVoodoo2_87_6.zip` from [dgVoodoo2's official 2.87.6 release](https://github.com/dege-diosg/dgVoodoo2/releases/tag/2.87.6).
-   Setup checks its SHA-256 and refuses any other file.
+   Setup checks its SHA-256 and refuses any other file. Skip this step under Wine/Proton with helper 0.2.2 or newer;
+   there `--dgvoodoo` is optional and no archive is used.
 3. Run setup from the unzipped folder:
 
    ```powershell
@@ -91,6 +94,11 @@ LocalIP=auto
 ```
 
 Window mode, frame limit and VSync are dgVoodoo2 settings in `dgVoodoo.conf`. Keep its `CaptureMouse` off as well.
+Under Wine/Proton, these wrapper settings are inactive; the launcher leaves display mode to Steam Deck / Proton.
+Controller, background, mouse and online options remain available. Use a game folder on a native Linux filesystem.
+When moving a Windows-made installation to Proton, choose **Update** with the matching launcher and runtime 0.2.2
+or newer. It retains a hash-named backup under `_muac/backups`, records the D3D9.dll removal in runtime.json,
+and removes the live DLL so Wine can provide D3D9. Failed/cancelled updates restore the original files.
 How the native fix works: [docs/runtime.md](docs/runtime.md).
 
 ## The release

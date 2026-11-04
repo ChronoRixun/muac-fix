@@ -1,4 +1,6 @@
 import hashlib
+import contextlib
+import io
 import json
 import tempfile
 import unittest
@@ -15,6 +17,39 @@ def sha(data):
 
 
 class RuntimePackageTests(unittest.TestCase):
+    def test_wine_cli_setup_does_not_require_graphics_argument(self):
+        from muac_setup.cli import main
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle, _, game, _ = self.fixture(Path(tmp))
+            with patch('muac_setup.sources.is_wine', return_value=True), \
+                    patch('muac_setup.cli.import_disc', return_value={'prepared': True, 'files_complete': True}), \
+                    contextlib.redirect_stdout(io.StringIO()) as output:
+                result = main(['setup', '--source', str(game), '--out', str(game / 'new'), '--bundle', str(bundle)])
+            self.assertEqual(result, 0)
+            self.assertTrue(json.loads(output.getvalue().splitlines()[-1])['prepared'])
+
+    def test_wine_preparation_needs_no_graphics_archive_and_records_backend(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle, archive, game, _ = self.fixture(Path(tmp))
+            archive.unlink()
+            with patch('muac_setup.runtime_package.RETAIL_EXE_SHA256', sha(b'retail fixture')), \
+                    patch('muac_setup.sources.is_wine', return_value=True):
+                prepare_runtime(game, bundle, archive)
+            self.assertFalse((game / 'D3D9.dll').exists())
+            for name in ('dinput8.dll', 'version.dll', 'muac-fix.ini', 'dgVoodoo.conf'):
+                self.assertTrue((game / name).is_file(), name)
+            stamp = json.loads((game / '_muac/runtime.json').read_text())
+            self.assertEqual(stamp['graphics'], 'wine-d3d9')
+            self.assertNotIn('D3D9.dll', [f['target'] for f in stamp['files']])
+
+    def test_wine_still_verifies_payload_before_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle, archive, game, _ = self.fixture(Path(tmp))
+            (bundle / 'dinput8.dll').write_bytes(b'bad')
+            with patch('muac_setup.sources.is_wine', return_value=True), self.assertRaises(SetupError):
+                prepare_runtime(game, bundle, archive)
+            self.assertFalse((game / 'version.dll').exists())
+
     def fixture(self, root):
         bundle = root / 'bundle'
         bundle.mkdir()

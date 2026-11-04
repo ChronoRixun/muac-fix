@@ -45,7 +45,7 @@ class PackagingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             archive = Path(tmp) / 'fixture.zip'
             archive.write_bytes(b'fixture')
-            result = package.make_manifest(archive, '0.2.1')
-            self.assertEqual(result['min_launcher'], '0.5.0-beta.6')
+            result = package.make_manifest(archive, '0.2.2')
+            self.assertEqual(result['min_launcher'], '0.5.0-beta.8')
             self.assertEqual(result['size'], 7)
             self.assertEqual(result['sha256'], hashlib.sha256(b'fixture').hexdigest())

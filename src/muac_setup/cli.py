@@ -5,6 +5,7 @@ import threading
 from pathlib import Path
 
 from . import __version__
+from . import sources
 from .install import import_disc, inspect_source, verify
 from .layout import SetupError
 from .sources import open_source
@@ -45,7 +46,8 @@ def main(argv=None):
     setup.add_argument('--source', required=True)
     setup.add_argument('--out', required=True)
     setup.add_argument('--bundle', default=str(Path(sys.executable).parent / 'runtime'))
-    setup.add_argument('--dgvoodoo', required=True)
+    setup.add_argument('--dgvoodoo', default='', required=not sources.is_wine(),
+                       help='Verified dgVoodoo archive (native Windows only; unused on Wine/Proton).')
     check = commands.add_parser('verify', help='Check every file against its import manifest.')
     check.add_argument('--out', required=True)
     args = parser.parse_args(argv)
