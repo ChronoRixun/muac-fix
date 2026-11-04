@@ -2,7 +2,8 @@
 
 # MUA Classic Fix
 
-**Play the original 2006 PC release of Marvel: Ultimate Alliance on a modern Windows PC, set up from your own disc.**
+**Play the original 2006 PC release of Marvel: Ultimate Alliance on a modern Windows PC or a Steam Deck / Linux PC
+(Proton), set up from your own disc.**
 
 MUA Classic Fix turns your own retail DVD (an ISO, the mounted disc or a copy of its files) into a new, checked
 installation and adds what the 2006 release needs today: it starts on current Windows, runs in a window, and works
@@ -12,8 +13,9 @@ with Xbox controllers, showing the game's own Xbox button art. It is made for
 This project ships no game content: no game files, no modified executables, no disc images. `Game.exe` stays
 byte-for-byte as it is on your disc.
 
-> **Current release: [0.2.1](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.1).** Automatic setup needs
-> Ultimate Legends 0.5.0-beta.6 or newer. What changed: [CHANGELOG.md](CHANGELOG.md).
+> **Current release: [0.2.2](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.2)**, which adds Steam Deck /
+> Linux (Proton) support. Automatic setup needs Ultimate Legends 0.5.0-beta.8 or newer (final 0.5.0 also qualifies).
+> What changed: [CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
@@ -30,6 +32,8 @@ byte-for-byte as it is on your disc.
 - **Windowed or borderless play.** Graphics go through [dgVoodoo2](https://github.com/dege-diosg/dgVoodoo2), set up
   for a normal window at the resolution you choose in the game. Your desktop resolution never changes. The mouse
   can leave the window, and the game keeps running while you use another window (minimize still works).
+- **Steam Deck / Linux (Proton).** Under Proton the game uses Proton's own D3D9 instead of dgVoodoo2, and Proton /
+  Steam Deck handles the display mode. Setup, Update and play work there with Ultimate Legends 0.5.0-beta.8 or newer.
 - **Online redirect.** The game's GameSpy lookups go to [OpenSpy](https://openspy.net) instead of the closed
   GameSpy servers.
 
@@ -38,9 +42,9 @@ byte-for-byte as it is on your disc.
 | | |
 |---|---|
 | **Marvel: Ultimate Alliance (2006) for PC, retail DVD** | Your own disc, as an ISO, the mounted DVD or a copied disc folder. Supported: the English PC DVD with MSI product code `{932FB3F3-594D-4600-ABFA-F2DE80A14214}`. The 2016 Steam release is a different build; for it, use [MUA Controller Fix](https://github.com/ChronoRixun/mua-controller-fix). |
-| **Windows** | Tested on Windows 11. |
+| **Windows, or Steam Deck / Linux with Proton** | Windows 11, or Proton (tested with GE-Proton 11 on Linux; not yet on a real Steam Deck). Under Proton, put the game folder on a Linux filesystem (internal storage, an ext4 SD card or your home folder), not an NTFS or network drive. |
 | **Disk space** | About 7 GB for the game, plus room for temporary cabinet extraction when you set up from an ISO. |
-| **Ultimate Legends 0.5.0-beta.6 or newer** | For automatic setup. Manual setup (below) doesn't need it. |
+| **Ultimate Legends 0.5.0-beta.8 or newer** | For automatic setup with 0.2.2. Final 0.5.0 also qualifies. Manual setup (below) doesn't need it. |
 
 ## Getting started
 
@@ -50,16 +54,19 @@ byte-for-byte as it is on your disc.
    PC)** and choose **Set up**.
 2. Pick your disc ISO or disc folder, then a new or empty folder for the game.
 3. The launcher downloads this project's checked `muac-setup` package from your update channel, plus the original
-   dgVoodoo2 2.87.6 archive. It checks both against their SHA-256 and runs setup on your PC. You can hide or cancel
+   dgVoodoo2 2.87.6 archive on native Windows. Under Proton the game uses Proton's own D3D9, so that archive and
+   its DLL are skipped.
+   It checks the files it uses against their SHA-256 and runs setup on your PC. You can hide or cancel
    setup, and an unfinished setup is never registered as ready.
 4. **Play.** The game's page has the window, input, mouse and OpenSpy options.
 
 ### By hand (command line)
 
-1. Download `muac-setup-0.2.1-win64.zip` from the [release](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.1),
+1. Download `muac-setup-0.2.2-win64.zip` from the [release](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.2),
    check it against `SHA256SUMS.txt`, and unzip it anywhere. It needs no Python.
 2. Download `dgVoodoo2_87_6.zip` from [dgVoodoo2's official 2.87.6 release](https://github.com/dege-diosg/dgVoodoo2/releases/tag/2.87.6).
-   Setup checks its SHA-256 and refuses any other file.
+   Setup checks its SHA-256 and refuses any other file. Skip this step under Wine/Proton: there `--dgvoodoo` is
+   optional and no archive is used.
 3. Run setup from the unzipped folder:
 
    ```powershell
@@ -91,16 +98,25 @@ LocalIP=auto
 ```
 
 Window mode, frame limit and VSync are dgVoodoo2 settings in `dgVoodoo.conf`. Keep its `CaptureMouse` off as well.
+Under Wine/Proton, these wrapper settings are inactive; the launcher leaves display mode to Steam Deck / Proton.
+Controller, background, mouse and online options remain available. Use a game folder on a native Linux filesystem.
+
+**Moving a Windows-made installation to Steam Deck / Linux:** copy the game folder to a Linux filesystem, open it in
+Ultimate Legends 0.5.0-beta.8 or newer under Proton and choose **Update** on the game's page (it is offered even when
+the installation is already on 0.2.2). Update keeps a backup of the installation's `D3D9.dll` at
+`_muac/backups/D3D9-<sha256>.dll`, records the removal in `_muac/runtime.json` and removes the live DLL so Proton
+provides D3D9. `Game.exe`, the other game files, saves, mods and your settings are kept, and a failed or cancelled
+Update restores the original files. On Windows, Update leaves `D3D9.dll` in place.
 How the native fix works: [docs/runtime.md](docs/runtime.md).
 
 ## The release
 
-[v0.2.1](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.1) has three assets:
+[v0.2.2](https://github.com/ChronoRixun/muac-fix/releases/tag/v0.2.2) has three assets:
 
 | Asset | What it is |
 |---|---|
-| `muac-setup-0.2.1-win64.zip` | The offline setup helper. Contains MUA Classic Fix's `dinput8.dll`, the source-built SafeDiscLoader2 `version.dll`, default `muac-fix.ini` and `dgVoodoo.conf`, every licence notice, and the corresponding source (this project, SafeDiscLoader2 at its pinned commit, and pycdlib). No game files, and no dgVoodoo2. |
-| `muac-setup.json` | The manifest Ultimate Legends reads: version, the zip's size and SHA-256, and the minimum launcher version (0.5.0-beta.6). |
+| `muac-setup-0.2.2-win64.zip` | The offline setup helper. Contains MUA Classic Fix's `dinput8.dll`, the source-built SafeDiscLoader2 `version.dll`, default `muac-fix.ini` and `dgVoodoo.conf`, every licence notice, and the corresponding source (this project, SafeDiscLoader2 at its pinned commit, and pycdlib). No game files, and no dgVoodoo2. |
+| `muac-setup.json` | The manifest Ultimate Legends reads: version, the zip's size and SHA-256, and the minimum launcher version (0.5.0-beta.8). |
 | `SHA256SUMS.txt` | The zip's SHA-256. |
 
 How the package is built and checked: [docs/packaging.md](docs/packaging.md).
@@ -111,6 +127,9 @@ How the package is built and checked: [docs/packaging.md](docs/packaging.md).
   alone rather than risk sending one pad's input to another player.
 - **Not certified yet:** every in-game controller mapping, saving and loading, and online play. The OpenSpy
   redirect is in place, but hosting and joining a game haven't been tested.
+- **Steam Deck / Proton** was tested under GE-Proton 11 on Linux (setup, Update of a Windows-made installation,
+  the game's main menu), not yet on a real Steam Deck. Gameplay past the menu and controllers through Steam Input
+  are not certified there yet.
 - **One disc edition.** Setup accepts the product code above, and automatic setup also needs the known retail
   `Game.exe`. Other editions and modified discs are refused, not guessed at.
 - **ISO images** are read through their ISO9660/Joliet file system; UDF-only images are not supported.

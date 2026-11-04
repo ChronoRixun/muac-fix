@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .install import RETAIL_EXE_SHA256, digest
 from .layout import SetupError, safe_relative
+from . import sources
 from .sources import assert_no_links
 
 REQUIRED = {'dinput8.dll', 'version.dll', 'version.json', 'muac-fix.ini', 'dgVoodoo.conf'}
@@ -41,6 +42,10 @@ def validate_bundle(bundle, archive):
         graphics = manifest['dgvoodoo']
         if graphics['member'] != 'MS/x86/D3D9.dll':
             raise ValueError('Unexpected graphics archive member')
+        # Wine/Proton supplies D3D9 itself. Never read, require or place dgVoodoo
+        # there: the pinned wrapper crashes under Wine (WineHQ bug 58731).
+        if sources.is_wine():
+            return manifest
         checked_file(archive, graphics['size'], graphics['sha256'])
         with zipfile.ZipFile(archive) as z:
             members = [i for i in z.infolist() if i.filename == graphics['member']]
@@ -75,12 +80,16 @@ def prepare_runtime(folder, bundle, archive):
             shutil.copyfileobj(source, output)
         checked_file(path, item['size'], item['sha256'])
     graphics = manifest['dgvoodoo']
-    with zipfile.ZipFile(archive) as z, (folder / 'D3D9.dll').open('xb') as output:
-        output.write(z.read(graphics['member']))
-    checked_file(folder / 'D3D9.dll', graphics['dll_size'], graphics['dll_sha256'])
+    use_dgvoodoo = not sources.is_wine()
+    if use_dgvoodoo:
+        with zipfile.ZipFile(archive) as z, (folder / 'D3D9.dll').open('xb') as output:
+            output.write(z.read(graphics['member']))
+        checked_file(folder / 'D3D9.dll', graphics['dll_size'], graphics['dll_sha256'])
     (folder / '_muac').mkdir(exist_ok=True)
     stamp = {'schema': 1, 'version': manifest['version'], 'prepared': True,
              'game_exe_sha256': RETAIL_EXE_SHA256,
+             'graphics': 'dgvoodoo' if use_dgvoodoo else 'wine-d3d9',
              'files': [{k: item[k] for k in ('target', 'size', 'sha256')} for item in manifest['files']] +
-                      [{'target': 'D3D9.dll', 'size': graphics['dll_size'], 'sha256': graphics['dll_sha256']}]}
+                      ([{'target': 'D3D9.dll', 'size': graphics['dll_size'], 'sha256': graphics['dll_sha256']}]
+                       if use_dgvoodoo else [])}
     (folder / '_muac/runtime.json').write_text(json.dumps(stamp, indent=2) + '\n', encoding='utf-8')
