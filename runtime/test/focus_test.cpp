@@ -89,7 +89,10 @@ int main(int argc,char** argv) {
             const int width=info.rcMonitor.right-info.rcMonitor.left, height=info.rcMonitor.bottom-info.rcMonitor.top;
             MoveWindow(game,50,50,width+26,height+60,FALSE);
             RECT rect{};GetWindowRect(game,&rect);
-            CHECK(rect.left==info.rcMonitor.left-13 && rect.top==info.rcMonitor.top && rect.right-rect.left==width+26);
+            // Windows may clamp the size to its maximum tracking size (the frame depends on DPI), so expect the
+            // centring of whatever width the window really got.
+            const int got=rect.right-rect.left;
+            CHECK(got>width && rect.left==info.rcMonitor.left-(got-width)/2 && rect.top==info.rcMonitor.top);
             MoveWindow(game,60,70,320,200,FALSE); // a window that fits keeps its place
             GetWindowRect(game,&rect);
             CHECK(rect.left==60 && rect.top==70);
@@ -105,7 +108,8 @@ int main(int argc,char** argv) {
             const int width=info.rcMonitor.right-info.rcMonitor.left, height=info.rcMonitor.bottom-info.rcMonitor.top;
             MoveWindow(game,info.rcMonitor.left,info.rcMonitor.top,width+26,height+60,FALSE);
             RECT rect{};GetWindowRect(game,&rect);
-            CHECK(rect.left==info.rcMonitor.left-13 && rect.top==info.rcMonitor.top);
+            const int got=rect.right-rect.left;
+            CHECK(got>width && rect.left==info.rcMonitor.left-(got-width)/2 && rect.top==info.rcMonitor.top);
         }
         CHECK(DestroyWindow(game));
     }
