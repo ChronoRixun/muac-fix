@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(muac_runtime VERSION 0.1.2 LANGUAGES C CXX RC)
+project(muac_runtime VERSION 0.1.3 LANGUAGES C CXX RC)
 if(NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
   message(FATAL_ERROR "Build with MSVC for Win32: MUA 2006 is 32-bit.")
 endif()
@@ -10,7 +10,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
 add_compile_options(/W4 /permissive- /utf-8)
 add_library(muac_runtime SHARED src/exports.cpp src/gamepad_fix.cpp src/controller_setup.cpp src/xinput_pad.cpp
-  src/log.cpp src/runtime.cpp src/window_focus.cpp src/display_modes.cpp src/openspy_redirect.cpp src/local_ip.cpp
+  src/log.cpp src/runtime.cpp src/window_focus.cpp src/display_modes.cpp src/dpi_awareness.cpp src/openspy_redirect.cpp src/local_ip.cpp
   src/dinput8.def src/version.rc
   third_party/minhook/src/buffer.c third_party/minhook/src/hook.c
   third_party/minhook/src/trampoline.c third_party/minhook/src/hde/hde32.c)
@@ -31,8 +31,16 @@ target_link_libraries(muac_focus_test PRIVATE dxguid user32)
 add_dependencies(muac_focus_test muac_runtime muac_test_engine)
 add_test(NAME focus_background_on COMMAND muac_focus_test $<TARGET_FILE:muac_runtime> $<TARGET_FILE:muac_test_engine>)
 add_test(NAME focus_background_off COMMAND muac_focus_test $<TARGET_FILE:muac_runtime> $<TARGET_FILE:muac_test_engine> off)
-set_tests_properties(focus_background_on focus_background_off PROPERTIES RUN_SERIAL TRUE)
+add_test(NAME focus_borderless COMMAND muac_focus_test $<TARGET_FILE:muac_runtime> $<TARGET_FILE:muac_test_engine> borderless)
+set_tests_properties(focus_background_on focus_background_off focus_borderless PROPERTIES RUN_SERIAL TRUE)
 add_executable(muac_controller_setup_test test/controller_setup_test.cpp src/controller_setup.cpp src/log.cpp)
 target_include_directories(muac_controller_setup_test PRIVATE src)
 target_link_libraries(muac_controller_setup_test PRIVATE ole32 advapi32)
 add_test(NAME controller_setup COMMAND muac_controller_setup_test)
+add_executable(muac_dpi_test test/dpi_test.cpp)
+set_target_properties(muac_dpi_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/dpi")
+target_link_libraries(muac_dpi_test PRIVATE dxguid user32)
+add_dependencies(muac_dpi_test muac_runtime muac_test_engine)
+add_test(NAME dpi_aware_on COMMAND muac_dpi_test $<TARGET_FILE:muac_runtime> $<TARGET_FILE:muac_test_engine> on)
+add_test(NAME dpi_aware_off COMMAND muac_dpi_test $<TARGET_FILE:muac_runtime> $<TARGET_FILE:muac_test_engine> off)
+add_test(NAME dpi_not_game COMMAND muac_dpi_test $<TARGET_FILE:muac_runtime> $<TARGET_FILE:muac_test_engine> nogame)

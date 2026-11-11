@@ -10,11 +10,45 @@
 
 namespace window_focus {
 namespace {
-    bool windowed=false, background=true;
+    bool windowed=false, background=true, borderless=false;
     decltype(&::ShowWindow) original_show{};
     struct window_state {WNDPROC previous{}; bool user_minimize{};};
     std::mutex windows_mutex;
     std::unordered_map<HWND,window_state> windows;
+    // The engine later replaces the window procedure with its own, which does not pass
+    // WM_STYLECHANGING / WM_WINDOWPOSCHANGING on, and moves the window again (to (0,0)). WM_WINDOWPOSCHANGED
+    // still reaches this procedure, so the final placement is checked and corrected there (bounded).
+    void enforce(HWND window) {
+        static thread_local bool busy=false;
+        static int budget=64;
+        if(busy || budget<=0 || IsIconic(window)) return;
+        RECT rect{};GetWindowRect(window,&rect);
+        const auto area=window_focus_rules::primary_monitor();
+        busy=true;
+        if(borderless) {
+            const auto style=static_cast<DWORD>(GetWindowLongA(window,GWL_STYLE)), ex_style=static_cast<DWORD>(GetWindowLongA(window,GWL_EXSTYLE));
+            const bool restyle=window_focus_rules::borderless_style(style)!=style || window_focus_rules::borderless_ex_style(ex_style)!=ex_style;
+            if(restyle) {
+                SetWindowLongA(window,GWL_STYLE,static_cast<LONG>(window_focus_rules::borderless_style(style)));
+                SetWindowLongA(window,GWL_EXSTYLE,static_cast<LONG>(window_focus_rules::borderless_ex_style(ex_style)));
+            }
+            if(restyle || !EqualRect(&rect,&area)) {
+                --budget;
+                SetWindowPos(window,nullptr,area.left,area.top,area.right-area.left,area.bottom-area.top,
+                             SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED);
+            }
+        }
+        else {
+            const auto placed=window_focus_rules::oversize_position(area,rect.left,rect.top,rect.right-rect.left,rect.bottom-rect.top);
+            if(placed.x!=rect.left || placed.y!=rect.top) {
+                --budget;
+                SetWindowPos(window,nullptr,placed.x,placed.y,0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
+                logger::write_once("oversize-window","display: window larger than the primary monitor centred on it");
+            }
+        }
+        busy=false;
+        if(budget==0) logger::write("display: window placement corrections stopped (the game keeps moving its window)");
+    }
     LRESULT CALLBACK procedure(HWND window,UINT message,WPARAM value,LPARAM detail) {
         window_state state;
         const bool minimize=message==WM_SYSCOMMAND && (value&0xfff0)==SC_MINIMIZE;
@@ -27,12 +61,45 @@ namespace {
             }
         }
         if(!state.previous) return DefWindowProcA(window,message,value,detail);
+        if(borderless) {
+            // dgVoodoo2's "borderless" attribute does not survive the engine's own SetWindowLongA /
+            // MoveWindow calls, so the title bar stayed and the window overhung the monitor. Keep the
+            // style borderless and the window exactly on the primary monitor.
+            if(message==WM_STYLECHANGING && detail) {
+                auto* change=reinterpret_cast<STYLESTRUCT*>(detail);
+                if(value==static_cast<WPARAM>(GWL_STYLE)) change->styleNew=window_focus_rules::borderless_style(change->styleNew);
+                if(value==static_cast<WPARAM>(GWL_EXSTYLE)) change->styleNew=window_focus_rules::borderless_ex_style(change->styleNew);
+            }
+            else if(message==WM_WINDOWPOSCHANGING && detail && !IsIconic(window) &&
+                    (reinterpret_cast<WINDOWPOS*>(detail)->flags&(SWP_NOMOVE|SWP_NOSIZE))!=(SWP_NOMOVE|SWP_NOSIZE)) {
+                auto* position=reinterpret_cast<WINDOWPOS*>(detail);
+                const auto area=window_focus_rules::primary_monitor();
+                position->x=area.left;position->y=area.top;position->cx=area.right-area.left;position->cy=area.bottom-area.top;
+                position->flags&=~static_cast<UINT>(SWP_NOMOVE|SWP_NOSIZE);
+            }
+        }
+        else if(message==WM_WINDOWPOSCHANGING && detail && !IsIconic(window) &&
+                (reinterpret_cast<WINDOWPOS*>(detail)->flags&(SWP_NOMOVE|SWP_NOSIZE))!=(SWP_NOMOVE|SWP_NOSIZE)) {
+            auto* position=reinterpret_cast<WINDOWPOS*>(detail);
+            RECT current{};GetWindowRect(window,&current);
+            const int x=(position->flags&SWP_NOMOVE)?current.left:position->x, y=(position->flags&SWP_NOMOVE)?current.top:position->y;
+            const int width=(position->flags&SWP_NOSIZE)?current.right-current.left:position->cx;
+            const int height=(position->flags&SWP_NOSIZE)?current.bottom-current.top:position->cy;
+            const auto placed=window_focus_rules::oversize_position(window_focus_rules::primary_monitor(),x,y,width,height);
+            if(placed.x!=x || placed.y!=y) {
+                position->x=placed.x;position->y=placed.y;
+                if(position->flags&SWP_NOSIZE){position->cx=width;position->cy=height;}
+                position->flags&=~static_cast<UINT>(SWP_NOMOVE|SWP_NOSIZE);
+                logger::write_once("oversize-window","display: window larger than the primary monitor centred on it");
+            }
+        }
         if(!state.user_minimize && !IsIconic(window) &&
            window_focus_rules::suppress_deactivation(windowed,background,message,value)) {
             logger::write_once("background-focus", "display: keeping the window active in the background without reclaiming focus");
             return DefWindowProcA(window,message,value,detail);
         }
         const auto result=CallWindowProcA(state.previous,window,message,value,detail);
+        if(message==WM_WINDOWPOSCHANGED) enforce(window);
         if(minimize || message==WM_NCDESTROY) {
             std::lock_guard lock(windows_mutex);
             if(message==WM_NCDESTROY) windows.erase(window);
@@ -61,6 +128,18 @@ namespace {
             windows.erase(window);logger::write("ERROR: could not attach window focus policy");return;
         }
         logger::write("display: window focus policy installed (RunInBackground=%d)",background);
+        if(borderless) {
+            const auto style=static_cast<DWORD>(GetWindowLongA(window,GWL_STYLE));
+            SetWindowLongA(window,GWL_STYLE,static_cast<LONG>(window_focus_rules::borderless_style(style)));
+            const auto ex_style=static_cast<DWORD>(GetWindowLongA(window,GWL_EXSTYLE));
+            SetWindowLongA(window,GWL_EXSTYLE,static_cast<LONG>(window_focus_rules::borderless_ex_style(ex_style)));
+            const auto area=window_focus_rules::primary_monitor();
+            SetWindowPos(window,nullptr,area.left,area.top,area.right-area.left,area.bottom-area.top,
+                         SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED);
+            RECT placed{};GetWindowRect(window,&placed);
+            logger::write("display: borderless window on the primary monitor (%ld,%ld %ldx%ld)",
+                          placed.left,placed.top,placed.right-placed.left,placed.bottom-placed.top);
+        }
     }
     BOOL WINAPI show(HWND window,int command) {
         if(windowed && game_window(window)) {
@@ -81,6 +160,8 @@ void install() {
     windowed=!ini_rules::read_flag(folder/L"dgVoodoo.conf",L"General",L"FullScreenMode",true) &&
              !ini_rules::read_flag(folder/L"dgVoodoo.conf",L"DirectX",L"AppControlledScreenMode",true);
     background=ini_rules::read_flag(folder/L"muac-fix.ini",L"Display",L"RunInBackground",true);
+    borderless=windowed && window_focus_rules::borderless_attribute(
+        ini_rules::read(folder/L"dgVoodoo.conf",L"GeneralExt",L"WindowedAttributes").value_or(""));
     if(!windowed) return;
     const auto initialized=MH_Initialize();
     if(initialized!=MH_OK && initialized!=MH_ERROR_ALREADY_INITIALIZED) return;
@@ -88,6 +169,6 @@ void install() {
     if(!target || MH_CreateHook(target,reinterpret_cast<void*>(&show),reinterpret_cast<void**>(&original_show))!=MH_OK ||
        MH_EnableHook(target)!=MH_OK) {logger::write("ERROR: window focus hook unavailable");return;}
     EnumThreadWindows(GetCurrentThreadId(),attach_existing,0);
-    logger::write("display: windowed focus policy armed");
+    logger::write("display: windowed focus policy armed%s",borderless?" (borderless)":"");
 }
 }

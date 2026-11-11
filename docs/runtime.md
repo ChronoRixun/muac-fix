@@ -62,6 +62,29 @@ the list when the primary monitor reports it, and makes the lookup return the sa
 listed. Any other executable is left alone and the log says "resolution guard not installed". dgVoodoo2 must also
 enumerate the size: Ultimate Legends 0.5.1 writes it to `[DirectXExt] ExtraEnumeratedResolutions`.
 
+**DPI awareness (runtime 0.1.3).** `Game.exe` has no DPI manifest, so on a monitor with display scaling Windows
+runs it DPI-unaware and multiplies its window coordinates. dgVoodoo2 sizes the window from the output's real pixels,
+so with a 3840x2160 primary at 150% the Borderless window became 3840 *logical* = 5760 real pixels wide and a
+Windowed 2560x1440 became 3840x2160 plus frame. `dinput8.dll` is a static import of `libIGDisplay.dll`, so its
+`DllMain` runs before the game's `WinMain`; there the runtime calls
+`SetProcessDpiAwarenessContext(PER_MONITOR_AWARE_V2)` (only when `libIGDisplay.dll` is loaded, never under Wine).
+A process already made aware, for example by the compatibility setting "Override high DPI scaling behavior", is
+left as it is. `[Display] DpiAware=0` in `muac-fix.ini` turns it off.
+
+**Borderless (runtime 0.1.3).** dgVoodoo2's `WindowedAttributes = borderless` is undone by the engine, which sets
+`WS_OVERLAPPEDWINDOW` and a client edge itself and moves the window. When that attribute is set (windowed mode
+only), the runtime's game-window subclass removes the frame styles on `WM_STYLECHANGING` and keeps the window on
+the primary monitor's rectangle on `WM_WINDOWPOSCHANGING`. The game and dgVoodoo2 render on adapter 0, the primary.
+The engine later installs its own window procedure, which swallows those two messages and moves the window to
+(0,0), so the final placement is also checked on `WM_WINDOWPOSCHANGED` and corrected once (at most 64 times per
+run). A Windowed window larger than the primary monitor (3840x2160 on a 4K screen) is centred on it horizontally
+with the title bar at the top instead of spilling onto the next monitor.
+
+Windows itself adds `HIGHDPIAWARE` under `HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers`
+for `Game.exe` the first time the DPI-unaware game enters exclusive Fullscreen (DXGI writes it while dgVoodoo2 sets
+up the device). From then on that path ran DPI aware, which is why Windowed looked right on some PCs and not on
+others. The runtime does not read or write that flag.
+
 ## Reused code
 
 The DirectInput adapter derives from MUA Controller Fix commit `893bef8`, and the DNS/local-IP rules and cursor
