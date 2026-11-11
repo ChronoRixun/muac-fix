@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.2.3
+
+### Fixed
+- **The game no longer crashes at startup with a resolution it doesn't know** (Ultimate Legends issue #31). The
+  2006 game keeps only 14 resolutions (640x480 to 1920x1200, plus 2048x1536) and read past the end of that list when
+  any other size was saved, so 2560x1440, 2560x1080, 3840x2160 and even 1600x900 crashed a few seconds after start.
+  The native fix (`dinput8.dll`, now **0.1.2**) adds the saved size to the game's list when the primary monitor
+  reports it and otherwise uses the saved size directly, after checking the game's code bytes. `Game.exe` on disk
+  is unchanged; another executable is left alone.
+
+### Changed
+- The manifest still requires Ultimate Legends **0.5.0-beta.8 or newer**, so 0.5.0 can install this release through
+  **Update**. Ultimate Legends **0.5.1** is needed to pick a resolution the original game
+  doesn't know (2560x1440, 3840x2160): it offers them once it sees runtime 0.1.2 and tells dgVoodoo2 about the chosen size. Older
+  launchers keep offering every monitor mode; with an older runtime (MUA Classic Fix 0.2.2 or before) a size such as
+  2560x1440 still crashes.
+- Setup helper, SafeDiscLoader2, dgVoodoo2 and the Proton runtime set are unchanged from 0.2.2.
+
+### Known limits
+- Tested on Windows 11 with dgVoodoo2 at 2560x1440, 2560x1080, 1920x1080, 1600x900 and 3840x2160 (a 4K monitor),
+  to the main menu and, at 3840x2160, into the first level. A size dgVoodoo2 can't offer on the monitor it uses
+  (3840x2160 on a 1440p monitor, say) still fails with "Display failed!"; Ultimate Legends only offers the primary
+  monitor's own modes.
+- Under Proton the guard is installed too, but display mode stays Proton's: the launcher doesn't write a resolution
+  there.
+
 ## 0.2.2
 
 ### Added

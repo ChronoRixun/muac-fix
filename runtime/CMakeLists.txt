@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(muac_runtime VERSION 0.1.1 LANGUAGES C CXX RC)
+project(muac_runtime VERSION 0.1.2 LANGUAGES C CXX RC)
 if(NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
   message(FATAL_ERROR "Build with MSVC for Win32: MUA 2006 is 32-bit.")
 endif()
@@ -10,7 +10,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
 add_compile_options(/W4 /permissive- /utf-8)
 add_library(muac_runtime SHARED src/exports.cpp src/gamepad_fix.cpp src/controller_setup.cpp src/xinput_pad.cpp
-  src/log.cpp src/runtime.cpp src/window_focus.cpp src/openspy_redirect.cpp src/local_ip.cpp
+  src/log.cpp src/runtime.cpp src/window_focus.cpp src/display_modes.cpp src/openspy_redirect.cpp src/local_ip.cpp
   src/dinput8.def src/version.rc
   third_party/minhook/src/buffer.c third_party/minhook/src/hook.c
   third_party/minhook/src/trampoline.c third_party/minhook/src/hde/hde32.c)

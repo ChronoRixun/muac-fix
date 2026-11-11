@@ -29,7 +29,9 @@ The manual **Package setup preview** workflow performs these steps and uploads a
 It does not publish or tag. Review the artifact before releasing it, including its manifest,
 source archives, licenses, PE architecture and absence of game content. The launcher requires
 a published manifest asset on the selected update channel to perform automatic downloads.
-The 0.2.2 manifest requires Ultimate Legends **0.5.0-beta.8 or newer** (final 0.5.0 also qualifies).
+The 0.2.3 manifest, like 0.2.2, requires Ultimate Legends **0.5.0-beta.8 or newer** (final 0.5.0 also qualifies):
+an older launcher can install its runtime, and Ultimate Legends 0.5.1 also offers every resolution once it sees
+runtime 0.1.2.
 Earlier launchers lack the matching Wine mount
 checks, graphics settings and migration transaction. In-place Update is implemented by the launcher,
 not the helper: on Wine it retains a hash-named backup of an inherited `D3D9.dll`, records the removal,

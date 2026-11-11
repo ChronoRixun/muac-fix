@@ -54,6 +54,14 @@ Windowing is dgVoodoo2's job, configured in `dgVoodoo.conf` (defaults:
 [packaging/dgVoodoo.conf](../packaging/dgVoodoo.conf)). A real window needs both `FullScreenMode = false` and
 `AppControlledScreenMode = false`. The proof behind that profile: [windowed-display.md](windowed-display.md).
 
+**Resolution guard (runtime 0.1.2).** The retail `Game.exe` keeps only 14 sizes from the primary monitor's mode
+list (640x480 to 1920x1200, plus 2048x1536), then looks the saved `Settings\Display\Resolution` up in that list
+with no end check, so any other saved size (2560x1440, 3840x2160, even 1600x900) crashed at startup
+(`Game.exe+0x34cb9f`). After checking the bytes of both sites, the runtime hooks the filter so the saved size joins
+the list when the primary monitor reports it, and makes the lookup return the saved size when it is still not
+listed. Any other executable is left alone and the log says "resolution guard not installed". dgVoodoo2 must also
+enumerate the size: Ultimate Legends 0.5.1 writes it to `[DirectXExt] ExtraEnumeratedResolutions`.
+
 ## Reused code
 
 The DirectInput adapter derives from MUA Controller Fix commit `893bef8`, and the DNS/local-IP rules and cursor
