@@ -2,6 +2,7 @@
 // system folder. DirectInput8Create additionally installs the gamepad fix on the
 // object it returns.
 
+#include "dpi_awareness.hpp"
 #include "gamepad_fix.hpp"
 #include "log.hpp"
 #include "runtime.hpp"
@@ -44,11 +45,21 @@ namespace
 	}
 }
 
+BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID)
+{
+	if (reason == DLL_PROCESS_ATTACH)
+	{
+		DisableThreadLibraryCalls(module);
+		dpi_awareness::apply();
+	}
+	return TRUE;
+}
+
 extern "C"
 {
 	const char* MuacFix_Version()
 	{
-		return "MUA Classic Fix 0.1.2";
+		return "MUA Classic Fix 0.1.3";
 	}
 
 	HRESULT WINAPI proxy_DirectInput8Create(HINSTANCE instance, DWORD version, REFIID riid, LPVOID* out, LPUNKNOWN outer)

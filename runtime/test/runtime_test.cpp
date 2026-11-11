@@ -114,7 +114,7 @@ int main() {
     const auto module = LoadLibraryW(L"dinput8.dll");
     CHECK(module != nullptr);
     const auto version = reinterpret_cast<const char*(*)()>(GetProcAddress(module, "MuacFix_Version"));
-    CHECK(version && std::strcmp(version(), "MUA Classic Fix 0.1.2") == 0);
+    CHECK(version && std::strcmp(version(), "MUA Classic Fix 0.1.3") == 0);
     for(const char* name : {"DirectInput8Create", "DllCanUnloadNow", "DllGetClassObject",
                            "DllRegisterServer", "DllUnregisterServer", "GetdfDIJoystick"})
         CHECK(GetProcAddress(module, name) != nullptr);

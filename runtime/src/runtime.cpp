@@ -5,6 +5,7 @@
 #include "openspy_redirect.hpp"
 #include "window_focus.hpp"
 #include "display_modes.hpp"
+#include "dpi_awareness.hpp"
 #include <Windows.h>
 #include <mutex>
 #include <array>
@@ -55,7 +56,8 @@ void install() {
         const auto ini=(logger::module_dir()/L"muac-fix.ini").wstring();
         controllers=ini_rules::read_flag(ini,L"Input",L"ControllerSupport",true);
         capture=ini_rules::read_flag(ini,L"Input",L"CaptureMouse",false);
-        logger::write("MUA Classic Fix 0.1.2: controllers=%d capture_mouse=%d",controllers,capture);
+        logger::write("MUA Classic Fix 0.1.3: controllers=%d capture_mouse=%d",controllers,capture);
+        dpi_awareness::report();
         const auto user=GetModuleHandleW(L"user32.dll");
         original_clip=reinterpret_cast<decltype(original_clip)>(GetProcAddress(user,"ClipCursor"));
         original_warp=reinterpret_cast<decltype(original_warp)>(GetProcAddress(user,"SetCursorPos"));
