@@ -6,7 +6,7 @@ on:
       version:
         description: Artifact version (no release is published)
         required: true
-        default: 0.2.3
+        default: 0.2.4
 permissions:
   contents: read
 jobs:
@@ -41,7 +41,7 @@ jobs:
           msbuild build/safedisc-source/version-proxy.vcxproj /t:Rebuild /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 /p:ForceImportBeforeCppTargets=$props /m:1 /nr:false
       - name: Package with licenses and corresponding source
         env:
-          PACKAGE_VERSION: ${{ inputs.version || '0.2.3' }}
+          PACKAGE_VERSION: ${{ inputs.version || '0.2.4' }}
         run: python tools/package_setup.py --version "$env:PACKAGE_VERSION" --safedisc-source build/safedisc-source --safedisc-dll build/safedisc-source/Release/version.dll --runtime build/runtime/bin/Release/dinput8.dll
       - name: Smoke test frozen helper
         run: |

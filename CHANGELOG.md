@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.2.4
+
+### Fixed
+- **The game window is the right size on scaled displays.** With Windows display scaling above 100% (a 4K monitor
+  at the default 150%, say), Windowed and Borderless came out about 1.5x too big and ran onto the next monitor: the
+  2006 game is not DPI aware, so Windows enlarged a window that dgVoodoo2 had already sized in real pixels. The native
+  fix (`dinput8.dll`, now **0.1.3**) makes the game per-monitor DPI aware before it opens its window, the same as the
+  Windows compatibility setting "Override high DPI scaling behavior: Application". Windowed is now the size you chose
+  in real pixels, centred; at 100% scaling nothing changes. Fullscreen was not affected.
+- **Borderless has no title bar and covers exactly the main monitor.** The game re-applied its own window frame,
+  so dgVoodoo2's borderless setting never took effect and the window overhung the screen edges. The fix now keeps
+  the window frameless and on the primary monitor's rectangle.
+
+### Changed
+- `[Display] DpiAware=0` in `muac-fix.ini` turns the DPI change off (Windows scales the window again). Not used under
+  Wine/Proton, where nothing changes.
+- The manifest still requires Ultimate Legends **0.5.0-beta.8 or newer**; any of them installs this through
+  **Update**. Setup helper, SafeDiscLoader2, dgVoodoo2, the resolution guard and the Proton runtime set are unchanged
+  from 0.2.3.
+
+### Known limits
+- Tested on Windows 11 with a 3840x2160 primary at 150% and a 2560x1440 secondary at 100%: Windowed, Borderless and
+  Fullscreen at 1920x1080, 2560x1440 and 3840x2160, into the first level at 3840x2160 Borderless. Windowed at the
+  monitor's full size is centred on it but taller than the screen by the title bar; use Borderless for that.
+- Exclusive Fullscreen once made Windows (DXGI) add the "HIGHDPIAWARE" compatibility flag for that `Game.exe`,
+  after which Windowed and Borderless looked right on that PC. 0.2.4 no longer depends on that flag.
+
 ## 0.2.3
 
 ### Fixed
