@@ -4,6 +4,7 @@
 #include "log.hpp"
 #include "openspy_redirect.hpp"
 #include "window_focus.hpp"
+#include "display_modes.hpp"
 #include <Windows.h>
 #include <mutex>
 #include <array>
@@ -54,7 +55,7 @@ void install() {
         const auto ini=(logger::module_dir()/L"muac-fix.ini").wstring();
         controllers=ini_rules::read_flag(ini,L"Input",L"ControllerSupport",true);
         capture=ini_rules::read_flag(ini,L"Input",L"CaptureMouse",false);
-        logger::write("MUA Classic Fix 0.1.1: controllers=%d capture_mouse=%d",controllers,capture);
+        logger::write("MUA Classic Fix 0.1.2: controllers=%d capture_mouse=%d",controllers,capture);
         const auto user=GetModuleHandleW(L"user32.dll");
         original_clip=reinterpret_cast<decltype(original_clip)>(GetProcAddress(user,"ClipCursor"));
         original_warp=reinterpret_cast<decltype(original_warp)>(GetProcAddress(user,"SetCursorPos"));
@@ -76,6 +77,7 @@ void install() {
             online_rules::choose(read_online(L"Domain",L"openspy.net"), read_online(L"Server",L"")),
             local_ip_rules::choose(read_online(L"LocalIP",L"auto")));
         window_focus::install();
+        display_modes::install();
         // The protected EXE restores API addresses without restoring a usable
         // import-name table. IAT-only hooks covered the engine DLL but missed
         // the game's dynamically resolved calls. These hooks remain process-local.

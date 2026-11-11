@@ -13,6 +13,7 @@
 #include "window_focus_rules.hpp"
 #include "online_rules.hpp"
 #include "vtable_patch.hpp"
+#include "display_modes_rules.hpp"
 
 int failures = 0;
 #define CHECK(x) do { if(!(x)) { std::printf("FAIL line %d: %s\n", __LINE__, #x); ++failures; } } while(false)
@@ -27,7 +28,26 @@ BOOL WINAPI fixture_protect(LPVOID, SIZE_T, DWORD, PDWORD old) {
     return ++protection_calls != fail_protection_call;
 }
 int main() {
-    int first{}, second{};
+    {
+        namespace dm = display_modes_rules;
+        CHECK(dm::parse("2560x1440") && dm::parse("2560x1440")->width == 2560 && dm::parse("2560x1440")->height == 1440);
+        CHECK(dm::parse("3840x2160") && dm::parse("3840x2160")->height == 2160);
+        CHECK(!dm::parse("") && !dm::parse("2560") && !dm::parse("2560x") && !dm::parse("x1440"));
+        CHECK(!dm::parse("2560x1440 ") && !dm::parse("2560X1440") && !dm::parse("-1x480") && !dm::parse("320x240"));
+        CHECK(!dm::parse("1234567x480"));
+        CHECK(dm::whitelisted(1920, 1080) && dm::whitelisted(1680, 1050) && dm::whitelisted(2048, 1536));
+        CHECK(!dm::whitelisted(1600, 900) && !dm::whitelisted(2560, 1440) && !dm::whitelisted(2048, 1152));
+        CHECK(dm::accept(2560, 1440, dm::parse("2560x1440")) && !dm::accept(2560, 1080, dm::parse("2560x1440")));
+        CHECK(dm::accept(1280, 720, std::nullopt) && !dm::accept(3840, 2160, std::nullopt));
+        const dm::entry modes[] = {{640,480,60,22},{1920,1080,60,22},{2560,1440,60,22}};
+        CHECK(dm::listed(modes, 3, "2560x1440") && dm::listed(modes, 3, "640x480"));
+        CHECK(!dm::listed(modes, 2, "2560x1440") && !dm::listed(modes, 3, "3840x2160") && !dm::listed(nullptr, 3, "640x480"));
+        CHECK(!dm::listed(modes, 3, "2560x14400") && !dm::listed(modes, 3, ""));
+        const auto unlisted = dm::unlisted_mode("3840x2160");
+        CHECK(unlisted.width == 3840 && unlisted.height == 2160 && unlisted.refresh == 60 && unlisted.format == 22);
+        const auto fallback = dm::unlisted_mode("garbage");
+        CHECK(fallback.width == 800 && fallback.height == 600);
+    }    int first{}, second{};
     void* slot = &first;
     void* saved = nullptr;
     fail_protection_call = 1;
@@ -94,7 +114,7 @@ int main() {
     const auto module = LoadLibraryW(L"dinput8.dll");
     CHECK(module != nullptr);
     const auto version = reinterpret_cast<const char*(*)()>(GetProcAddress(module, "MuacFix_Version"));
-    CHECK(version && std::strcmp(version(), "MUA Classic Fix 0.1.1") == 0);
+    CHECK(version && std::strcmp(version(), "MUA Classic Fix 0.1.2") == 0);
     for(const char* name : {"DirectInput8Create", "DllCanUnloadNow", "DllGetClassObject",
                            "DllRegisterServer", "DllUnregisterServer", "GetdfDIJoystick"})
         CHECK(GetProcAddress(module, name) != nullptr);
