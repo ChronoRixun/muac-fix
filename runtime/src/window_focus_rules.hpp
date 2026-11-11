@@ -26,6 +26,16 @@ namespace window_focus_rules {
     constexpr DWORD borderless_ex_style(DWORD style) {
         return style & ~static_cast<DWORD>(WS_EX_CLIENTEDGE|WS_EX_WINDOWEDGE|WS_EX_STATICEDGE|WS_EX_DLGMODALFRAME);
     }
+    // Windowed at (or above) the monitor's own size: the frame makes the window bigger than the primary
+    // monitor and dgVoodoo2 then places it at the monitor's corner, so its right edge reached the next
+    // monitor. Centre it horizontally on the primary and keep the title bar on screen; a window that fits
+    // keeps its position (dgVoodoo2 centres it, and the player may move it).
+    constexpr POINT oversize_position(RECT monitor, int x, int y, int width, int height) {
+        const int monitor_width=monitor.right-monitor.left, monitor_height=monitor.bottom-monitor.top;
+        if(width>monitor_width) x=monitor.left-(width-monitor_width)/2;
+        if(height>monitor_height) y=monitor.top;
+        return POINT{x,y};
+    }
     // The game and dgVoodoo2 render on adapter 0, the primary monitor (physical pixels once DPI aware).
     inline RECT primary_monitor() {
         MONITORINFO info{};info.cbSize=sizeof(info);

@@ -78,6 +78,16 @@ int main(int argc,char** argv) {
         check("style reset");
         MoveWindow(game,25,25,800,600,FALSE);
         check("move");
+        if(!borderless) {
+            // Windowed bigger than the primary monitor: centred on it horizontally, title bar on screen.
+            const int width=info.rcMonitor.right-info.rcMonitor.left, height=info.rcMonitor.bottom-info.rcMonitor.top;
+            MoveWindow(game,50,50,width+26,height+60,FALSE);
+            RECT rect{};GetWindowRect(game,&rect);
+            CHECK(rect.left==info.rcMonitor.left-13 && rect.top==info.rcMonitor.top && rect.right-rect.left==width+26);
+            MoveWindow(game,60,70,320,200,FALSE); // a window that fits keeps its place
+            GetWindowRect(game,&rect);
+            CHECK(rect.left==60 && rect.top==70);
+        }
         CHECK(DestroyWindow(game));
     }
     if(input)input->Release();

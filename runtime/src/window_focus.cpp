@@ -44,6 +44,21 @@ namespace {
                 position->flags&=~static_cast<UINT>(SWP_NOMOVE|SWP_NOSIZE);
             }
         }
+        else if(message==WM_WINDOWPOSCHANGING && detail && !IsIconic(window) &&
+                (reinterpret_cast<WINDOWPOS*>(detail)->flags&(SWP_NOMOVE|SWP_NOSIZE))!=(SWP_NOMOVE|SWP_NOSIZE)) {
+            auto* position=reinterpret_cast<WINDOWPOS*>(detail);
+            RECT current{};GetWindowRect(window,&current);
+            const int x=(position->flags&SWP_NOMOVE)?current.left:position->x, y=(position->flags&SWP_NOMOVE)?current.top:position->y;
+            const int width=(position->flags&SWP_NOSIZE)?current.right-current.left:position->cx;
+            const int height=(position->flags&SWP_NOSIZE)?current.bottom-current.top:position->cy;
+            const auto placed=window_focus_rules::oversize_position(window_focus_rules::primary_monitor(),x,y,width,height);
+            if(placed.x!=x || placed.y!=y) {
+                position->x=placed.x;position->y=placed.y;
+                if(position->flags&SWP_NOSIZE){position->cx=width;position->cy=height;}
+                position->flags&=~static_cast<UINT>(SWP_NOMOVE|SWP_NOSIZE);
+                logger::write_once("oversize-window","display: window larger than the primary monitor centred on it");
+            }
+        }
         if(!state.user_minimize && !IsIconic(window) &&
            window_focus_rules::suppress_deactivation(windowed,background,message,value)) {
             logger::write_once("background-focus", "display: keeping the window active in the background without reclaiming focus");
