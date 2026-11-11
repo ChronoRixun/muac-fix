@@ -15,6 +15,40 @@ namespace {
     struct window_state {WNDPROC previous{}; bool user_minimize{};};
     std::mutex windows_mutex;
     std::unordered_map<HWND,window_state> windows;
+    // The engine later replaces the window procedure with its own, which does not pass
+    // WM_STYLECHANGING / WM_WINDOWPOSCHANGING on, and moves the window again (to (0,0)). WM_WINDOWPOSCHANGED
+    // still reaches this procedure, so the final placement is checked and corrected there (bounded).
+    void enforce(HWND window) {
+        static thread_local bool busy=false;
+        static int budget=64;
+        if(busy || budget<=0 || IsIconic(window)) return;
+        RECT rect{};GetWindowRect(window,&rect);
+        const auto area=window_focus_rules::primary_monitor();
+        busy=true;
+        if(borderless) {
+            const auto style=static_cast<DWORD>(GetWindowLongA(window,GWL_STYLE)), ex_style=static_cast<DWORD>(GetWindowLongA(window,GWL_EXSTYLE));
+            const bool restyle=window_focus_rules::borderless_style(style)!=style || window_focus_rules::borderless_ex_style(ex_style)!=ex_style;
+            if(restyle) {
+                SetWindowLongA(window,GWL_STYLE,static_cast<LONG>(window_focus_rules::borderless_style(style)));
+                SetWindowLongA(window,GWL_EXSTYLE,static_cast<LONG>(window_focus_rules::borderless_ex_style(ex_style)));
+            }
+            if(restyle || !EqualRect(&rect,&area)) {
+                --budget;
+                SetWindowPos(window,nullptr,area.left,area.top,area.right-area.left,area.bottom-area.top,
+                             SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED);
+            }
+        }
+        else {
+            const auto placed=window_focus_rules::oversize_position(area,rect.left,rect.top,rect.right-rect.left,rect.bottom-rect.top);
+            if(placed.x!=rect.left || placed.y!=rect.top) {
+                --budget;
+                SetWindowPos(window,nullptr,placed.x,placed.y,0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
+                logger::write_once("oversize-window","display: window larger than the primary monitor centred on it");
+            }
+        }
+        busy=false;
+        if(budget==0) logger::write("display: window placement corrections stopped (the game keeps moving its window)");
+    }
     LRESULT CALLBACK procedure(HWND window,UINT message,WPARAM value,LPARAM detail) {
         window_state state;
         const bool minimize=message==WM_SYSCOMMAND && (value&0xfff0)==SC_MINIMIZE;
@@ -65,6 +99,7 @@ namespace {
             return DefWindowProcA(window,message,value,detail);
         }
         const auto result=CallWindowProcA(state.previous,window,message,value,detail);
+        if(message==WM_WINDOWPOSCHANGED) enforce(window);
         if(minimize || message==WM_NCDESTROY) {
             std::lock_guard lock(windows_mutex);
             if(message==WM_NCDESTROY) windows.erase(window);

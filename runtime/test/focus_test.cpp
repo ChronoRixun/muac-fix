@@ -8,6 +8,12 @@
 
 int failures=0, deactivations=0, manual_minimizes=0;
 #define CHECK(x) do{if(!(x)){std::printf("FAIL line %d: %s\n",__LINE__,#x);++failures;}}while(false)
+WNDPROC engine_previous{};
+// Like the engine's later window procedure: swallows the "changing" messages, forwards the rest.
+LRESULT CALLBACK engine_procedure(HWND window,UINT message,WPARAM value,LPARAM detail) {
+    if(message==WM_WINDOWPOSCHANGING || message==WM_STYLECHANGING) return DefWindowProcA(window,message,value,detail);
+    return CallWindowProcA(engine_previous,window,message,value,detail);
+}
 LRESULT CALLBACK recording(HWND window,UINT message,WPARAM value,LPARAM detail) {
     if(message==WM_ACTIVATEAPP && !value) ++deactivations;
     if(message==WM_APP+7) return 12345;
@@ -87,6 +93,19 @@ int main(int argc,char** argv) {
             MoveWindow(game,60,70,320,200,FALSE); // a window that fits keeps its place
             GetWindowRect(game,&rect);
             CHECK(rect.left==60 && rect.top==70);
+        }
+        // The engine replaces the procedure and moves the window again: corrected after the move.
+        engine_previous=reinterpret_cast<WNDPROC>(SetWindowLongPtrA(game,GWLP_WNDPROC,reinterpret_cast<LONG_PTR>(&engine_procedure)));
+        if(borderless) {
+            SetWindowLongA(game,GWL_STYLE,WS_OVERLAPPEDWINDOW);
+            MoveWindow(game,0,0,900,700,FALSE);
+            check("engine procedure");
+        }
+        else {
+            const int width=info.rcMonitor.right-info.rcMonitor.left, height=info.rcMonitor.bottom-info.rcMonitor.top;
+            MoveWindow(game,info.rcMonitor.left,info.rcMonitor.top,width+26,height+60,FALSE);
+            RECT rect{};GetWindowRect(game,&rect);
+            CHECK(rect.left==info.rcMonitor.left-13 && rect.top==info.rcMonitor.top);
         }
         CHECK(DestroyWindow(game));
     }
